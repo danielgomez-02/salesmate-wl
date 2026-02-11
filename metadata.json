@@ -1,0 +1,9 @@
+{
+  "name": "Coca-Cola Salesmate Pro",
+  "description": "Herramienta de ejecución en punto de venta para representantes de Coca-Cola. Gestión de rutas, misiones RED y auditoría de enfriadores.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
