@@ -115,6 +115,24 @@ const AchievementOverlay: React.FC<{
   </div>
 );
 
+// ── Admin form inputs (defined at module scope to avoid re-mount on each keystroke) ──
+const AdminTextInput: React.FC<{label: string, value: string, onChange: (v: string) => void, placeholder?: string}> = ({label, value, onChange, placeholder}) => (
+  <div>
+    <label className="text-[7px] font-black text-slate-400 uppercase block mb-0.5">{label}</label>
+    <input type="text" value={value || ''} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="w-full text-xs bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 font-medium" />
+  </div>
+);
+
+const AdminColorInput: React.FC<{label: string, value: string, onChange: (v: string) => void}> = ({label, value, onChange}) => (
+  <div className="flex items-center gap-2">
+    <input type="color" value={value?.startsWith('#') ? value : `#${value}`} onChange={e => onChange(e.target.value)} className="w-8 h-8 rounded-lg border-0 cursor-pointer shrink-0" />
+    <div className="flex-1">
+      <label className="text-[7px] font-black text-slate-400 uppercase">{label}</label>
+      <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} className="w-full text-[10px] font-mono bg-slate-50 rounded-lg px-2 py-1 border border-slate-100" />
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath } = useBrand();
   const getCategoryLabel = (cat: string) => {
@@ -552,23 +570,6 @@ const App: React.FC = () => {
           setEditingBrand(clone);
         };
 
-        const ColorInput: React.FC<{label: string, path: string, val: string}> = ({label, path, val}) => (
-          <div className="flex items-center gap-2">
-            <input type="color" value={val?.startsWith('#') ? val : `#${val}`} onChange={e => updateDraft(path, e.target.value)} className="w-8 h-8 rounded-lg border-0 cursor-pointer shrink-0" />
-            <div className="flex-1">
-              <label className="text-[7px] font-black text-slate-400 uppercase">{label}</label>
-              <input type="text" value={val || ''} onChange={e => updateDraft(path, e.target.value)} className="w-full text-[10px] font-mono bg-slate-50 rounded-lg px-2 py-1 border border-slate-100" />
-            </div>
-          </div>
-        );
-
-        const TextInput: React.FC<{label: string, path: string, val: string, placeholder?: string}> = ({label, path, val, placeholder}) => (
-          <div>
-            <label className="text-[7px] font-black text-slate-400 uppercase block mb-0.5">{label}</label>
-            <input type="text" value={val || ''} placeholder={placeholder} onChange={e => updateDraft(path, e.target.value)} className="w-full text-xs bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 font-medium" />
-          </div>
-        );
-
         return (
           <div className="p-4 space-y-4 animate-fade-in overflow-y-auto pb-24">
             <div className="flex items-center justify-between">
@@ -608,53 +609,53 @@ const App: React.FC = () => {
             {/* Section: Info básica */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Información</p>
-              <TextInput label="Nombre de la App" path="labels.appName" val={draft.labels.appName} />
-              <TextInput label="Empresa" path="labels.companyName" val={draft.labels.companyName} />
-              <TextInput label="Tagline" path="labels.appTagline" val={draft.labels.appTagline} />
-              <TextInput label="Sistema de Misiones" path="labels.missionSystem" val={draft.labels.missionSystem} placeholder="RED, GOLD, CORE..." />
-              <TextInput label="Puntos Label" path="labels.pointsLabel" val={draft.labels.pointsLabel} />
-              <TextInput label="Rutina Label" path="labels.routineLabel" val={draft.labels.routineLabel} />
-              <TextInput label="Storage Prefix" path="storagePrefix" val={draft.storagePrefix} placeholder="mi_marca_v1_" />
-              <TextInput label="Código Empleado Default" path="defaultEmpCode" val={draft.defaultEmpCode} />
+              <AdminTextInput label="Nombre de la App" value={draft.labels.appName} onChange={v => updateDraft('labels.appName', v)} />
+              <AdminTextInput label="Empresa" value={draft.labels.companyName} onChange={v => updateDraft('labels.companyName', v)} />
+              <AdminTextInput label="Tagline" value={draft.labels.appTagline} onChange={v => updateDraft('labels.appTagline', v)} />
+              <AdminTextInput label="Sistema de Misiones" value={draft.labels.missionSystem} onChange={v => updateDraft('labels.missionSystem', v)} placeholder="RED, GOLD, CORE..." />
+              <AdminTextInput label="Puntos Label" value={draft.labels.pointsLabel} onChange={v => updateDraft('labels.pointsLabel', v)} />
+              <AdminTextInput label="Rutina Label" value={draft.labels.routineLabel} onChange={v => updateDraft('labels.routineLabel', v)} />
+              <AdminTextInput label="Storage Prefix" value={draft.storagePrefix} onChange={v => updateDraft('storagePrefix', v)} placeholder="mi_marca_v1_" />
+              <AdminTextInput label="Código Empleado Default" value={draft.defaultEmpCode} onChange={v => updateDraft('defaultEmpCode', v)} />
             </div>
 
             {/* Section: Login */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Pantalla Login</p>
-              <TextInput label="Título Login" path="labels.loginTitle" val={draft.labels.loginTitle} />
-              <TextInput label="Placeholder Input" path="labels.loginPlaceholder" val={draft.labels.loginPlaceholder} />
-              <TextInput label="Texto Botón" path="labels.loginButton" val={draft.labels.loginButton} />
+              <AdminTextInput label="Título Login" value={draft.labels.loginTitle} onChange={v => updateDraft('labels.loginTitle', v)} />
+              <AdminTextInput label="Placeholder Input" value={draft.labels.loginPlaceholder} onChange={v => updateDraft('labels.loginPlaceholder', v)} />
+              <AdminTextInput label="Texto Botón" value={draft.labels.loginButton} onChange={v => updateDraft('labels.loginButton', v)} />
             </div>
 
             {/* Section: Colores */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Colores</p>
               <div className="grid grid-cols-2 gap-2">
-                <ColorInput label="Primario" path="colors.primary" val={draft.colors.primary} />
-                <ColorInput label="Primario Light" path="colors.primaryLight" val={draft.colors.primaryLight} />
-                <ColorInput label="Primario Dark" path="colors.primaryDark" val={draft.colors.primaryDark} />
-                <ColorInput label="Acento" path="colors.accent" val={draft.colors.accent} />
-                <ColorInput label="Acento Light" path="colors.accentLight" val={draft.colors.accentLight} />
-                <ColorInput label="Success" path="colors.success" val={draft.colors.success} />
+                <AdminColorInput label="Primario" value={draft.colors.primary} onChange={v => updateDraft('colors.primary', v)} />
+                <AdminColorInput label="Primario Light" value={draft.colors.primaryLight} onChange={v => updateDraft('colors.primaryLight', v)} />
+                <AdminColorInput label="Primario Dark" value={draft.colors.primaryDark} onChange={v => updateDraft('colors.primaryDark', v)} />
+                <AdminColorInput label="Acento" value={draft.colors.accent} onChange={v => updateDraft('colors.accent', v)} />
+                <AdminColorInput label="Acento Light" value={draft.colors.accentLight} onChange={v => updateDraft('colors.accentLight', v)} />
+                <AdminColorInput label="Success" value={draft.colors.success} onChange={v => updateDraft('colors.success', v)} />
               </div>
               <p className="text-[7px] font-black text-slate-400 uppercase mt-2">Colores por Categoría</p>
               <div className="grid grid-cols-2 gap-2">
-                <ColorInput label="Ventas" path="colors.categoryColors.sales" val={draft.colors.categoryColors.sales} />
-                <ColorInput label="Ejecución" path="colors.categoryColors.execution" val={draft.colors.categoryColors.execution} />
-                <ColorInput label="Comunicación" path="colors.categoryColors.communication" val={draft.colors.categoryColors.communication} />
-                <ColorInput label="Activación" path="colors.categoryColors.activation" val={draft.colors.categoryColors.activation} />
+                <AdminColorInput label="Ventas" value={draft.colors.categoryColors.sales} onChange={v => updateDraft('colors.categoryColors.sales', v)} />
+                <AdminColorInput label="Ejecución" value={draft.colors.categoryColors.execution} onChange={v => updateDraft('colors.categoryColors.execution', v)} />
+                <AdminColorInput label="Comunicación" value={draft.colors.categoryColors.communication} onChange={v => updateDraft('colors.categoryColors.communication', v)} />
+                <AdminColorInput label="Activación" value={draft.colors.categoryColors.activation} onChange={v => updateDraft('colors.categoryColors.activation', v)} />
               </div>
             </div>
 
             {/* Section: Imágenes */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Imágenes</p>
-              <TextInput label="URL del Logo" path="images.logo" val={draft.images.logo || ''} placeholder="https://..." />
-              <TextInput label="URL Banner Login" path="images.loginBanner" val={draft.images.loginBanner || ''} placeholder="https://..." />
-              <TextInput label="URL Producto Fallback" path="images.fallbackProduct" val={draft.images.fallbackProduct} />
+              <AdminTextInput label="URL del Logo" value={draft.images.logo || ''} onChange={v => updateDraft('images.logo', v)} placeholder="https://..." />
+              <AdminTextInput label="URL Banner Login" value={draft.images.loginBanner || ''} onChange={v => updateDraft('images.loginBanner', v)} placeholder="https://..." />
+              <AdminTextInput label="URL Producto Fallback" value={draft.images.fallbackProduct} onChange={v => updateDraft('images.fallbackProduct', v)} />
               <div className="grid grid-cols-2 gap-2">
-                <ColorInput label="Avatar BG (hex sin #)" path="images.avatarBg" val={draft.images.avatarBg} />
-                <ColorInput label="Avatar Color (hex sin #)" path="images.avatarColor" val={draft.images.avatarColor} />
+                <AdminColorInput label="Avatar BG (hex sin #)" value={draft.images.avatarBg} onChange={v => updateDraft('images.avatarBg', v)} />
+                <AdminColorInput label="Avatar Color (hex sin #)" value={draft.images.avatarColor} onChange={v => updateDraft('images.avatarColor', v)} />
               </div>
             </div>
 
