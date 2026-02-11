@@ -264,6 +264,20 @@ const App: React.FC = () => {
           await offlineDb.saveRoutes(brandId, code, rawRoutes);
         }
         setScreen(AppScreen.DASHBOARD);
+        // Prefetch all missions in background (non-blocking)
+        if (brandId && rawRoutes.length > 0) {
+          (async () => {
+            const results = await Promise.allSettled(
+              rawRoutes.map(async (r) => {
+                const m = await mockApi.getMissions(r.visit_id);
+                await offlineDb.saveMissions(brandId, String(r.visit_id), m);
+                return r.visit_id;
+              })
+            );
+            const ok = results.filter(r => r.status === 'fulfilled').length;
+            console.log(`[PWA] Prefetched missions for ${ok}/${rawRoutes.length} routes`);
+          })();
+        }
       } else {
         // Offline: load from IndexedDB cache
         if (brandId) {
