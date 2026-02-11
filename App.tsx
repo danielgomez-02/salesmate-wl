@@ -575,35 +575,76 @@ const App: React.FC = () => {
             {brandKeys.map(key => {
               const b = brands[key];
               return (
-                <button
+                <div
                   key={key}
-                  onClick={() => {
-                    setBrandId(key);
-                    pushBrandPath(key);
-                    setScreen(AppScreen.LOGIN);
-                  }}
-                  className="w-full p-4 rounded-[24px] border-2 flex items-center gap-4 transition-all active:scale-95 hover:shadow-lg group"
+                  className="w-full p-4 rounded-[24px] border-2 flex items-center gap-4 transition-all hover:shadow-lg group"
                   style={{
                     borderColor: brandId === key ? b.colors.primary : '#f1f5f9',
                     backgroundColor: brandId === key ? `${b.colors.primary}08` : 'white'
                   }}
                 >
-                  {b.images.logo ? (
-                    <img src={b.images.logo} alt={b.labels.appName} className="w-12 h-12 rounded-[16px] object-contain shadow-md shrink-0 bg-white p-1" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-[16px] flex items-center justify-center text-white font-black text-lg shadow-md shrink-0" style={{ backgroundColor: b.colors.primary }}>
-                      {b.labels.appName[0]}
+                  <div
+                    className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer active:scale-95 transition-transform"
+                    onClick={() => {
+                      setBrandId(key);
+                      pushBrandPath(key);
+                      setScreen(AppScreen.LOGIN);
+                    }}
+                  >
+                    {b.images.logo ? (
+                      <img src={b.images.logo} alt={b.labels.appName} className="w-12 h-12 rounded-[16px] object-contain shadow-md shrink-0 bg-white p-1" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-[16px] flex items-center justify-center text-white font-black text-lg shadow-md shrink-0" style={{ backgroundColor: b.colors.primary }}>
+                        {b.labels.appName[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 text-left min-w-0">
+                      <h4 className="text-base font-black text-slate-900 tracking-tight">{b.labels.appName}</h4>
+                      <p className="text-[9px] font-bold text-slate-400">{b.labels.companyName} — {b.labels.appTagline}</p>
+                      <p className="text-[7px] font-bold text-slate-300 mt-0.5">/{key}</p>
                     </div>
-                  )}
-                  <div className="flex-1 text-left">
-                    <h4 className="text-base font-black text-slate-900 tracking-tight">{b.labels.appName}</h4>
-                    <p className="text-[9px] font-bold text-slate-400">{b.labels.companyName} — {b.labels.appTagline}</p>
-                    <p className="text-[7px] font-bold text-slate-300 mt-0.5">/{key}</p>
                   </div>
-                  <div className="text-slate-200 group-hover:translate-x-1 transition-transform">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Edit button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingBrand(JSON.parse(JSON.stringify(b)));
+                        setAdminSlug('');
+                        setScreen(AppScreen.BRAND_ADMIN);
+                      }}
+                      className="p-2 rounded-xl hover:bg-slate-100 transition-colors active:scale-90"
+                      title="Editar marca"
+                    >
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`¿Eliminar la marca "${b.labels.appName}"? Esta acción no se puede deshacer.`)) {
+                          deleteBrand(key);
+                        }
+                      }}
+                      className="p-2 rounded-xl hover:bg-red-50 transition-colors active:scale-90"
+                      title="Eliminar marca"
+                    >
+                      <svg className="w-4 h-4 text-slate-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                    {/* Navigate arrow */}
+                    <div
+                      className="text-slate-200 group-hover:translate-x-1 transition-transform cursor-pointer p-1"
+                      onClick={() => {
+                        setBrandId(key);
+                        pushBrandPath(key);
+                        setScreen(AppScreen.LOGIN);
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
