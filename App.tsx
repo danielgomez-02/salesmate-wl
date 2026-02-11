@@ -1,9 +1,11 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppScreen, UserData, RouteItem, Goal, Mission, MissionCategory, InsightChip, Product, BrandConfig } from './types';
 import { mockApi } from './services/mockApi';
 import Layout from './components/Layout';
 import { useBrand, createBlankBrand } from './context/BrandContext';
+import { offlineDb } from './services/offlineDb';
+import { applyDynamicManifest, initInstallPrompt, canInstall, promptInstall } from './pwa/dynamicManifest';
 
 const ProgressCircle: React.FC<{ current: number, total: number, label: string, color: string }> = ({ current, total, label, color }) => {
   const percentage = total === 0 ? 0 : (current / total) * 100;
@@ -168,6 +170,11 @@ const App: React.FC = () => {
   const [loginInput, setLoginInput] = useState(brand.defaultEmpCode);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
 
+  // PWA state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [installAvailable, setInstallAvailable] = useState(false);
+  const [pendingSyncs, setPendingSyncs] = useState(0);
+
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -176,6 +183,52 @@ const App: React.FC = () => {
   useEffect(() => {
     setLoginInput(brand.defaultEmpCode);
   }, [brand]);
+
+  // ── PWA: Dynamic manifest + install prompt ──
+  useEffect(() => {
+    initInstallPrompt();
+    const onAvailable = () => setInstallAvailable(true);
+    const onInstalled = () => setInstallAvailable(false);
+    window.addEventListener('pwa-install-available', onAvailable);
+    window.addEventListener('pwa-installed', onInstalled);
+    return () => {
+      window.removeEventListener('pwa-install-available', onAvailable);
+      window.removeEventListener('pwa-installed', onInstalled);
+    };
+  }, []);
+
+  // Apply dynamic manifest whenever brand changes
+  useEffect(() => {
+    if (brandId && brand) {
+      applyDynamicManifest(brand, brandId);
+      document.title = `${brand.labels.appName} — ${brand.labels.companyName}`;
+    }
+  }, [brand, brandId]);
+
+  // ── PWA: Online/offline detection + sync ──
+  useEffect(() => {
+    const goOnline = async () => {
+      setIsOnline(true);
+      // Process sync queue when back online
+      const synced = await offlineDb.processSyncQueue(async (item) => {
+        try {
+          await mockApi.updateTaskStatus(Number(item.taskId), item.data);
+          return true;
+        } catch { return false; }
+      });
+      if (synced > 0) console.log(`[PWA] Synced ${synced} offline completions`);
+      setPendingSyncs(await offlineDb.getPendingSyncCount());
+    };
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    // Check pending syncs on mount
+    offlineDb.getPendingSyncCount().then(setPendingSyncs);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
 
   // Listen for browser back/forward navigation (popstate)
   useEffect(() => {
@@ -197,14 +250,48 @@ const App: React.FC = () => {
   const loadUserData = async (code: string) => {
     setIsLoading(true);
     try {
-      const userData = await mockApi.getUserInfo(code, brand.labels.companyName);
-      setUser(userData);
-      const rawRoutes = await mockApi.getRoutes(code);
-      setRoutes(rawRoutes);
-      setGoals(await mockApi.getGoals(userData.emp_code));
-      setScreen(AppScreen.DASHBOARD);
+      if (navigator.onLine) {
+        // Online: fetch from API and cache in IndexedDB
+        const userData = await mockApi.getUserInfo(code, brand.labels.companyName);
+        setUser(userData);
+        const rawRoutes = await mockApi.getRoutes(code);
+        setRoutes(rawRoutes);
+        const rawGoals = await mockApi.getGoals(userData.emp_code);
+        setGoals(rawGoals);
+        // Cache for offline use
+        if (brandId) {
+          await offlineDb.saveUserData(brandId, code, userData);
+          await offlineDb.saveRoutes(brandId, code, rawRoutes);
+        }
+        setScreen(AppScreen.DASHBOARD);
+      } else {
+        // Offline: load from IndexedDB cache
+        if (brandId) {
+          const cachedUser = await offlineDb.getUserData(brandId, code);
+          const cachedRoutes = await offlineDb.getRoutes(brandId, code);
+          if (cachedUser && cachedRoutes) {
+            setUser(cachedUser as UserData);
+            setRoutes(cachedRoutes);
+            setGoals([]);
+            setScreen(AppScreen.DASHBOARD);
+          } else {
+            console.warn('[PWA] No cached data available for offline login');
+          }
+        }
+      }
     } catch (e) {
-      console.error("Login failed", e);
+      console.error("Login failed, trying offline cache...", e);
+      // Fallback to cache on network error
+      if (brandId) {
+        const cachedUser = await offlineDb.getUserData(brandId, code);
+        const cachedRoutes = await offlineDb.getRoutes(brandId, code);
+        if (cachedUser && cachedRoutes) {
+          setUser(cachedUser as UserData);
+          setRoutes(cachedRoutes);
+          setGoals([]);
+          setScreen(AppScreen.DASHBOARD);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -227,9 +314,27 @@ const App: React.FC = () => {
     setSelectedRoute(route);
     setIsLoading(true);
     try {
+      // Check localStorage first (in-session progress)
       const stored = localStorage.getItem(`${brand.storagePrefix}${route.visit_id}`);
-      if (stored) setMissions(JSON.parse(stored));
-      else setMissions(await mockApi.getMissions(route.visit_id));
+      if (stored) {
+        setMissions(JSON.parse(stored));
+      } else if (navigator.onLine) {
+        const freshMissions = await mockApi.getMissions(route.visit_id);
+        setMissions(freshMissions);
+        // Cache in IndexedDB for offline
+        if (brandId) await offlineDb.saveMissions(brandId, String(route.visit_id), freshMissions);
+      } else {
+        // Offline: try IndexedDB
+        const cached = brandId ? await offlineDb.getMissions(brandId, String(route.visit_id)) : null;
+        if (cached) setMissions(cached);
+        else setMissions([]);
+      }
+      setScreen(AppScreen.CUSTOMER_DETAIL);
+    } catch (e) {
+      // Network error fallback to IndexedDB
+      const cached = brandId ? await offlineDb.getMissions(brandId, String(route.visit_id)) : null;
+      if (cached) setMissions(cached);
+      else setMissions([]);
       setScreen(AppScreen.CUSTOMER_DETAIL);
     } finally { setIsLoading(false); }
   };
@@ -280,9 +385,21 @@ const App: React.FC = () => {
       }
 
       try {
-         await mockApi.updateTaskStatus(selectedMission.taskid, feedbackData);
+         if (navigator.onLine) {
+           await mockApi.updateTaskStatus(selectedMission.taskid, feedbackData);
+         } else {
+           // Queue for sync when back online
+           if (brandId && selectedRoute) {
+             await offlineDb.queueMissionCompletion(brandId, String(selectedRoute.visit_id), String(selectedMission.taskid), feedbackData);
+             setPendingSyncs(await offlineDb.getPendingSyncCount());
+           }
+         }
       } catch (e) {
-         console.warn("Could not sync task status with backend", e);
+         console.warn("[PWA] Could not sync, queuing for later", e);
+         if (brandId && selectedRoute) {
+           await offlineDb.queueMissionCompletion(brandId, String(selectedRoute.visit_id), String(selectedMission.taskid), feedbackData);
+           setPendingSyncs(await offlineDb.getPendingSyncCount());
+         }
       }
     }
 
@@ -490,6 +607,15 @@ const App: React.FC = () => {
         `${brand.labels.appName.toUpperCase()} PRO`
       }
     >
+      {/* ──────── PWA: Offline indicator ──────── */}
+      {!isOnline && (
+        <div className="sticky top-0 z-50 flex items-center justify-center gap-2 py-2 px-4 text-white text-xs font-bold uppercase tracking-widest bg-amber-500 shadow-md animate-fade-in">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 5.636a9 9 0 010 12.728M5.636 18.364a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072M15.536 8.464a5 5 0 010 7.072" /></svg>
+          Modo Offline
+          {pendingSyncs > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">{pendingSyncs} pendiente{pendingSyncs > 1 ? 's' : ''}</span>}
+        </div>
+      )}
+
       {showAchievement && (
         <AchievementOverlay
           completedCount={missions.filter(m => m.status === 'done').length}
@@ -881,6 +1007,17 @@ const App: React.FC = () => {
                  {isLoading ? 'Ingresando...' : brand.labels.loginButton}
               </button>
             </form>
+            {/* PWA Install button */}
+            {installAvailable && (
+              <button
+                onClick={async () => { await promptInstall(); }}
+                className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+                style={{ borderColor: `${brand.colors.primary}40`, color: brand.colors.primary, backgroundColor: `${brand.colors.primary}08` }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Instalar App
+              </button>
+            )}
             <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="mt-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors self-center">
               ← Cambiar marca
             </button>
@@ -896,8 +1033,13 @@ const App: React.FC = () => {
                 <p className="text-[11px] font-bold uppercase tracking-widest truncate" style={{ color: brand.colors.primary }}>{brand.labels.routineLabel}</p>
                 <h2 className="text-2xl font-black italic tracking-tighter truncate">Mi Ruta</h2>
              </div>
-             <div className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-sm shrink-0" style={{ backgroundColor: brand.colors.primaryLight }}>
-                <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=${brand.images.avatarBg}&color=${brand.images.avatarColor}`} className="w-full h-full object-cover" alt="User Avatar" />
+             <div className="relative shrink-0">
+               <div className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-sm" style={{ backgroundColor: brand.colors.primaryLight }}>
+                  <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=${brand.images.avatarBg}&color=${brand.images.avatarColor}`} className="w-full h-full object-cover" alt="User Avatar" />
+               </div>
+               {pendingSyncs > 0 && (
+                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">{pendingSyncs}</span>
+               )}
              </div>
            </div>
 
