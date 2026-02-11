@@ -23,7 +23,7 @@ function applyBrandCSS(brand: BrandConfig) {
   root.style.setProperty('--brand-cat-activation', c.categoryColors.activation);
 }
 
-/** Parse first path segment: /cocacola/foo → "cocacola", /admin → "admin", / → "" */
+/** Parse first path segment: /cocacola/foo → "cocacola", /config → "config", / → "" */
 function getPathSegment(): string {
   return (window.location.pathname.replace(/^\/+/, '').split('/')[0] || '').toLowerCase();
 }
@@ -102,7 +102,7 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [brandId, _setBrandId] = useState<string>(() => {
     const segment = getPathSegment();
     const merged = { ...defaultBrands, ...loadCustomBrands() };
-    if (segment && segment !== 'admin' && merged[segment]) return segment;
+    if (segment && segment !== 'config' && merged[segment]) return segment;
 
     const params = new URLSearchParams(window.location.search);
     const urlBrand = params.get('brand');

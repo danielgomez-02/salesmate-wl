@@ -139,9 +139,9 @@ const App: React.FC = () => {
     return brand.labels.categories[cat as MissionCategory] || cat.toUpperCase();
   };
 
-  // Route-based initial screen: /admin → BRAND_ADMIN, /{brandId} → LOGIN, / → BRAND_SELECT
+  // Route-based initial screen: /config → BRAND_ADMIN, /{brandId} → LOGIN, / → BRAND_SELECT
   const [screen, setScreen] = useState<AppScreen>(() => {
-    if (initialPath === 'admin') return AppScreen.BRAND_ADMIN;
+    if (initialPath === 'config') return AppScreen.BRAND_ADMIN;
     if (initialPath && brands[initialPath]) return AppScreen.LOGIN;
     return AppScreen.BRAND_SELECT;
   });
@@ -508,6 +508,7 @@ const App: React.FC = () => {
                 onClick={() => {
                   setEditingBrand(null);
                   setAdminSlug('');
+                  window.history.pushState({}, '', '/config');
                   setScreen(AppScreen.BRAND_ADMIN);
                 }}
                 className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors active:scale-90"
@@ -574,7 +575,7 @@ const App: React.FC = () => {
           <div className="p-4 space-y-4 animate-fade-in overflow-y-auto pb-24">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{isNew ? 'Nueva Marca' : `Editar: ${draft.labels.appName}`}</h2>
-              <button onClick={() => setScreen(AppScreen.BRAND_SELECT)} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-90">
+              <button onClick={() => { window.history.pushState({}, '', '/'); setScreen(AppScreen.BRAND_SELECT); }} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-90">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
