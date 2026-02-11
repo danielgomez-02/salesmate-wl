@@ -90,6 +90,7 @@ export interface Mission {
 }
 
 export enum AppScreen {
+  LANDING,
   BRAND_SELECT,
   BRAND_ADMIN,
   LOGIN,

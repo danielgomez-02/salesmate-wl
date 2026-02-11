@@ -139,11 +139,11 @@ const App: React.FC = () => {
     return brand.labels.categories[cat as MissionCategory] || cat.toUpperCase();
   };
 
-  // Route-based initial screen: /config → BRAND_ADMIN, /{brandId} → LOGIN, / → BRAND_SELECT
+  // Route-based initial screen: /config → BRAND_SELECT, /{brandId} → LOGIN, / → LANDING
   const [screen, setScreen] = useState<AppScreen>(() => {
-    if (initialPath === 'config') return AppScreen.BRAND_ADMIN;
+    if (initialPath === 'config') return AppScreen.BRAND_SELECT;
     if (initialPath && brands[initialPath]) return AppScreen.LOGIN;
-    return AppScreen.BRAND_SELECT;
+    return AppScreen.LANDING;
   });
 
   // Brand admin form state
@@ -467,7 +467,8 @@ const App: React.FC = () => {
       title={
         screen === AppScreen.MISSION_EXECUTION ? "MISIÓN GUIADA" :
         screen === AppScreen.CUSTOMER_DETAIL && selectedRoute ? selectedRoute.customer.name :
-        screen === AppScreen.BRAND_SELECT ? "SELECCIONAR MARCA" :
+        screen === AppScreen.LANDING ? "SALESMATE" :
+        screen === AppScreen.BRAND_SELECT ? "CONFIGURACIÓN" :
         screen === AppScreen.BRAND_ADMIN ? "CONFIGURAR MARCA" :
         `${brand.labels.appName.toUpperCase()} PRO`
       }
@@ -492,13 +493,68 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* ──────── BRAND SELECT SCREEN ──────── */}
+      {/* ──────── LANDING SCREEN ──────── */}
+      {screen === AppScreen.LANDING && (
+        <div className="p-6 h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-white animate-fade-in">
+          <div className="mb-12 text-center">
+            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-6 shadow-xl">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.5em] mb-3">Powered by Yalo</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Salesmate</h1>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Whitelabel Platform</p>
+          </div>
+
+          <div className="w-full max-w-sm space-y-3">
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/config');
+                setScreen(AppScreen.BRAND_SELECT);
+              }}
+              className="w-full py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all hover:shadow-2xl"
+            >
+              Configurar Marcas
+            </button>
+
+            {brandKeys.length > 0 && (
+              <div className="pt-4 border-t border-slate-100 mt-6">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center mb-3">Acceso directo</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {brandKeys.map(key => {
+                    const b = brands[key];
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setBrandId(key);
+                          pushBrandPath(key);
+                          setScreen(AppScreen.LOGIN);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-full border border-slate-100 bg-white hover:shadow-md transition-all active:scale-95 text-xs font-bold text-slate-600"
+                      >
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ backgroundColor: b.colors.primary }}>
+                          {b.labels.appName[0]}
+                        </div>
+                        {b.labels.appName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <p className="text-[8px] text-slate-300 mt-12 uppercase tracking-widest">Proof of Concept — Whitelabel Demo</p>
+        </div>
+      )}
+
+      {/* ──────── BRAND SELECT / CONFIG SCREEN ──────── */}
       {screen === AppScreen.BRAND_SELECT && (
         <div className="p-6 h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-white animate-fade-in">
           <div className="mb-10 text-center">
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.5em] mb-3">Powered by Yalo</p>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Salesmate</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Whitelabel Platform</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Configuración de Marcas</p>
           </div>
 
           <div className="w-full space-y-3 max-w-sm">
@@ -508,13 +564,12 @@ const App: React.FC = () => {
                 onClick={() => {
                   setEditingBrand(null);
                   setAdminSlug('');
-                  window.history.pushState({}, '', '/config');
                   setScreen(AppScreen.BRAND_ADMIN);
                 }}
                 className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors active:scale-90"
-                title="Configurar marcas"
+                title="Crear nueva marca"
               >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
               </button>
             </div>
             {brandKeys.map(key => {
@@ -575,7 +630,7 @@ const App: React.FC = () => {
           <div className="p-4 space-y-4 animate-fade-in overflow-y-auto pb-24">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{isNew ? 'Nueva Marca' : `Editar: ${draft.labels.appName}`}</h2>
-              <button onClick={() => { window.history.pushState({}, '', '/'); setScreen(AppScreen.BRAND_SELECT); }} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-90">
+              <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-90">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
@@ -757,7 +812,7 @@ const App: React.FC = () => {
                {isLoading ? 'Ingresando...' : brand.labels.loginButton}
             </button>
           </form>
-          <button onClick={() => setScreen(AppScreen.BRAND_SELECT)} className="mt-6 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+          <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="mt-6 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
             ← Cambiar marca
           </button>
         </div>
@@ -1237,7 +1292,7 @@ const App: React.FC = () => {
               </div>
            </div>
 
-           <button onClick={() => setScreen(AppScreen.BRAND_SELECT)} className="w-full mt-auto py-3 bg-white border-2 text-[10px] font-black uppercase tracking-widest rounded-[24px] shadow-sm active:bg-slate-50 transition-all" style={{ borderColor: `${brand.colors.primary}30`, color: brand.colors.primary }}>
+           <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="w-full mt-auto py-3 bg-white border-2 text-[10px] font-black uppercase tracking-widest rounded-[24px] shadow-sm active:bg-slate-50 transition-all" style={{ borderColor: `${brand.colors.primary}30`, color: brand.colors.primary }}>
              Cerrar Sesión
            </button>
         </div>
