@@ -10,7 +10,13 @@ function generateIconDataUrl(initial: string, bgColor: string, size: number): st
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+
+  // ERR-003 FIX: Graceful fallback if canvas context is unavailable
+  if (!ctx) {
+    console.warn('Canvas 2D context unavailable — returning empty icon');
+    return '';
+  }
 
   // Background
   ctx.fillStyle = bgColor;
@@ -28,11 +34,20 @@ function generateIconDataUrl(initial: string, bgColor: string, size: number): st
   return canvas.toDataURL('image/png');
 }
 
+// PERF-002 FIX: Track the current blob URL so we can revoke it before creating a new one
+let currentManifestBlobUrl: string | null = null;
+
 /** Generate and inject a dynamic manifest for the current brand */
 export function applyDynamicManifest(brand: BrandConfig, brandId: string) {
   // Remove any existing manifest link
   const existing = document.querySelector('link[rel="manifest"]');
   if (existing) existing.remove();
+
+  // Revoke previous blob URL to prevent memory leak
+  if (currentManifestBlobUrl) {
+    URL.revokeObjectURL(currentManifestBlobUrl);
+    currentManifestBlobUrl = null;
+  }
 
   const initial = brand.labels.appName?.[0]?.toUpperCase() || 'S';
   const icon192 = brand.images.logo || generateIconDataUrl(initial, brand.colors.primary, 192);
@@ -57,11 +72,11 @@ export function applyDynamicManifest(brand: BrandConfig, brandId: string) {
   };
 
   const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+  currentManifestBlobUrl = URL.createObjectURL(blob);
 
   const link = document.createElement('link');
   link.rel = 'manifest';
-  link.href = url;
+  link.href = currentManifestBlobUrl;
   document.head.appendChild(link);
 
   // Also update theme-color meta tag
@@ -83,13 +98,18 @@ export function applyDynamicManifest(brand: BrandConfig, brandId: string) {
   appleMeta.content = 'default';
 }
 
-/** Manage the PWA install prompt */
-let deferredPrompt: any = null;
+/** Manage the PWA install prompt — TYPE-001 FIX: proper BeforeInstallPromptEvent type */
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
 export function initInstallPrompt() {
   window.addEventListener('beforeinstallprompt', (e: Event) => {
     e.preventDefault();
-    deferredPrompt = e;
+    deferredPrompt = e as BeforeInstallPromptEvent;
     window.dispatchEvent(new CustomEvent('pwa-install-available'));
   });
 

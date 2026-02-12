@@ -1,22 +1,73 @@
 /**
  * IndexedDB offline storage for Salesmate PWA.
  * Stores user data, routes, missions, and queues offline completions for sync.
+ *
+ * PERF-001: Uses connection pooling — a single IDBDatabase instance is reused
+ * across operations, only opening a new one if the previous was closed/errored.
  */
+
+import { UserData, RouteItem, Mission } from '../types';
+import type { TaskFeedback } from './mockApi';
 
 const DB_NAME = 'salesmate_offline';
 const DB_VERSION = 1;
 
-interface SyncQueueItem {
+// ── Typed data shapes for IndexedDB stores ──
+
+interface CachedUserData {
+  key: string;
+  brandId: string;
+  empCode: string;
+  name: string;
+  emp_code: string;
+  company: string;
+  cachedAt: number;
+}
+
+interface CachedRoutes {
+  cacheKey: string;
+  brandId: string;
+  empCode: string;
+  routes: RouteItem[];
+  cachedAt: number;
+}
+
+interface CachedMissions {
+  cacheKey: string;
+  brandId: string;
+  visitId: string;
+  missions: Mission[];
+  cachedAt: number;
+}
+
+export interface SyncQueueItem {
   id: string;
   type: 'mission_complete';
   brandId: string;
   visitId: string;
   taskId: string;
-  data: any;
+  data: TaskFeedback;
   timestamp: number;
 }
 
-function openDb(): Promise<IDBDatabase> {
+// ── Connection pool: reuse a single IDBDatabase instance ──
+
+let dbInstance: IDBDatabase | null = null;
+
+function getDb(): Promise<IDBDatabase> {
+  // Return existing connection if still open
+  if (dbInstance) {
+    try {
+      // Quick check: try accessing objectStoreNames to verify the connection is alive
+      if (dbInstance.objectStoreNames.length > 0) {
+        return Promise.resolve(dbInstance);
+      }
+    } catch {
+      // Connection was closed or errored, re-open below
+      dbInstance = null;
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
@@ -34,48 +85,55 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore('syncQueue', { keyPath: 'id' });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      // Reset instance if the connection closes unexpectedly
+      dbInstance.onclose = () => { dbInstance = null; };
+      resolve(dbInstance);
+    };
     request.onerror = () => reject(request.error);
   });
 }
 
-async function put(storeName: string, data: any): Promise<void> {
-  const db = await openDb();
+// ── Internal CRUD helpers (no longer close db after each operation) ──
+
+async function put<T extends Record<string, unknown>>(storeName: string, data: T): Promise<void> {
+  const db = await getDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
     tx.objectStore(storeName).put(data);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 
 async function get<T>(storeName: string, key: string): Promise<T | undefined> {
-  const db = await openDb();
+  const db = await getDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readonly');
     const req = tx.objectStore(storeName).get(key);
-    req.onsuccess = () => { db.close(); resolve(req.result as T | undefined); };
-    req.onerror = () => { db.close(); reject(req.error); };
+    req.onsuccess = () => resolve(req.result as T | undefined);
+    req.onerror = () => reject(req.error);
   });
 }
 
 async function getAll<T>(storeName: string): Promise<T[]> {
-  const db = await openDb();
+  const db = await getDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readonly');
     const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => { db.close(); resolve(req.result as T[]); };
-    req.onerror = () => { db.close(); reject(req.error); };
+    req.onsuccess = () => resolve(req.result as T[]);
+    req.onerror = () => reject(req.error);
   });
 }
 
 async function remove(storeName: string, key: string): Promise<void> {
-  const db = await openDb();
+  const db = await getDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
     tx.objectStore(storeName).delete(key);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -83,40 +141,60 @@ async function remove(storeName: string, key: string): Promise<void> {
 
 export const offlineDb = {
   /** Save user data after login */
-  async saveUserData(brandId: string, empCode: string, userData: any) {
-    await put('userData', { key: `${brandId}:${empCode}`, brandId, empCode, ...userData, cachedAt: Date.now() });
+  async saveUserData(brandId: string, empCode: string, userData: UserData): Promise<void> {
+    await put('userData', {
+      key: `${brandId}:${empCode}`,
+      brandId,
+      empCode,
+      name: userData.name,
+      emp_code: userData.emp_code,
+      company: userData.company,
+      cachedAt: Date.now(),
+    });
   },
 
   /** Get cached user data */
-  async getUserData(brandId: string, empCode: string) {
-    const result = await get<any>('userData', `${brandId}:${empCode}`);
+  async getUserData(brandId: string, empCode: string): Promise<Pick<UserData, 'name' | 'emp_code' | 'company'> | null> {
+    const result = await get<CachedUserData>('userData', `${brandId}:${empCode}`);
     return result ? { name: result.name, emp_code: result.emp_code, company: result.company } : null;
   },
 
   /** Save routes for a user */
-  async saveRoutes(brandId: string, empCode: string, routes: any[]) {
-    await put('routes', { cacheKey: `${brandId}:${empCode}`, brandId, empCode, routes, cachedAt: Date.now() });
+  async saveRoutes(brandId: string, empCode: string, routes: RouteItem[]): Promise<void> {
+    await put('routes', {
+      cacheKey: `${brandId}:${empCode}`,
+      brandId,
+      empCode,
+      routes,
+      cachedAt: Date.now(),
+    });
   },
 
   /** Get cached routes */
-  async getRoutes(brandId: string, empCode: string) {
-    const result = await get<any>('routes', `${brandId}:${empCode}`);
+  async getRoutes(brandId: string, empCode: string): Promise<RouteItem[] | null> {
+    const result = await get<CachedRoutes>('routes', `${brandId}:${empCode}`);
     return result?.routes || null;
   },
 
   /** Save missions for a visit */
-  async saveMissions(brandId: string, visitId: string, missions: any[]) {
-    await put('missions', { cacheKey: `${brandId}:${visitId}`, brandId, visitId, missions, cachedAt: Date.now() });
+  async saveMissions(brandId: string, visitId: string, missions: Mission[]): Promise<void> {
+    await put('missions', {
+      cacheKey: `${brandId}:${visitId}`,
+      brandId,
+      visitId,
+      missions,
+      cachedAt: Date.now(),
+    });
   },
 
   /** Get cached missions */
-  async getMissions(brandId: string, visitId: string) {
-    const result = await get<any>('missions', `${brandId}:${visitId}`);
+  async getMissions(brandId: string, visitId: string): Promise<Mission[] | null> {
+    const result = await get<CachedMissions>('missions', `${brandId}:${visitId}`);
     return result?.missions || null;
   },
 
   /** Queue a mission completion for offline sync */
-  async queueMissionCompletion(brandId: string, visitId: string, taskId: string, feedbackData: any) {
+  async queueMissionCompletion(brandId: string, visitId: string, taskId: string, feedbackData: TaskFeedback): Promise<void> {
     const item: SyncQueueItem = {
       id: `${taskId}_${Date.now()}`,
       type: 'mission_complete',
@@ -126,7 +204,7 @@ export const offlineDb = {
       data: feedbackData,
       timestamp: Date.now(),
     };
-    await put('syncQueue', item);
+    await put('syncQueue', item as unknown as Record<string, unknown>);
   },
 
   /** Get all pending sync items */
@@ -135,7 +213,7 @@ export const offlineDb = {
   },
 
   /** Remove a sync item after successful sync */
-  async removeSyncItem(id: string) {
+  async removeSyncItem(id: string): Promise<void> {
     await remove('syncQueue', id);
   },
 

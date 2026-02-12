@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppScreen, UserData, RouteItem, Goal, Mission, MissionCategory, InsightChip, Product, BrandConfig } from './types';
-import { mockApi } from './services/mockApi';
+import { mockApi, RoutesWithMissions } from './services/mockApi';
 import Layout from './components/Layout';
 import { useBrand, createBlankBrand } from './context/BrandContext';
 import { offlineDb } from './services/offlineDb';
@@ -135,6 +135,36 @@ const AdminColorInput: React.FC<{label: string, value: string, onChange: (v: str
   </div>
 );
 
+// PERF-003 FIX: ProductImage at module scope avoids re-creation on every render
+const ProductImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  fallbackSrc: string;
+  primaryColor: string;
+  primaryLight: string;
+}> = ({ src, alt, className, fallbackSrc, primaryColor, primaryLight }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const finalSrc = hasError ? fallbackSrc : src;
+  return (
+    <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
+      {!isLoaded && !hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 animate-pulse">
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: primaryLight, borderTopColor: primaryColor }}></div>
+        </div>
+      )}
+      <img
+        src={finalSrc}
+        alt={alt}
+        className={`w-full h-full object-contain transition-all duration-700 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => { if (!hasError) setHasError(true); }}
+      />
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath } = useBrand();
   const getCategoryLabel = (cat: string) => {
@@ -177,7 +207,10 @@ const App: React.FC = () => {
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
+  // Leaflet Map loaded at runtime via CDN — no TS types available
+  const mapInstanceRef = useRef<{ remove: () => void } | null>(null);
+  // Holds the missions map returned by getRoutes (replaces module-level missionsCache)
+  const missionsMapRef = useRef<Record<number, Mission[]>>({});
 
   // Update loginInput when brand changes
   useEffect(() => {
@@ -254,7 +287,8 @@ const App: React.FC = () => {
         // Online: fetch from API and cache in IndexedDB
         const userData = await mockApi.getUserInfo(code, brand.labels.companyName);
         setUser(userData);
-        const rawRoutes = await mockApi.getRoutes(code);
+        const { routes: rawRoutes, missionsMap } = await mockApi.getRoutes(code);
+        missionsMapRef.current = missionsMap;
         setRoutes(rawRoutes);
         const rawGoals = await mockApi.getGoals(userData.emp_code);
         setGoals(rawGoals);
@@ -264,18 +298,18 @@ const App: React.FC = () => {
           await offlineDb.saveRoutes(brandId, code, rawRoutes);
         }
         setScreen(AppScreen.DASHBOARD);
-        // Prefetch all missions in background (non-blocking)
+        // Cache all missions in IndexedDB for offline use (non-blocking)
         if (brandId && rawRoutes.length > 0) {
           (async () => {
             const results = await Promise.allSettled(
               rawRoutes.map(async (r) => {
-                const m = await mockApi.getMissions(r.visit_id);
+                const m = mockApi.getMissionsFromMap(missionsMap, r.visit_id);
                 await offlineDb.saveMissions(brandId, String(r.visit_id), m);
                 return r.visit_id;
               })
             );
             const ok = results.filter(r => r.status === 'fulfilled').length;
-            console.log(`[PWA] Prefetched missions for ${ok}/${rawRoutes.length} routes`);
+            console.log(`[PWA] Cached missions for ${ok}/${rawRoutes.length} routes`);
           })();
         }
       } else {
@@ -324,31 +358,36 @@ const App: React.FC = () => {
     await loadUserData(loginInput);
   };
 
+  // MAINT-004: Namespace localStorage keys per user+brand to avoid collision
+  const storageKey = (visitId: number) =>
+    `${brand.storagePrefix}${user?.emp_code || 'anon'}_${visitId}`;
+
   const selectCustomer = async (route: RouteItem) => {
     setSelectedRoute(route);
     setIsLoading(true);
     try {
       // Check localStorage first (in-session progress)
-      const stored = localStorage.getItem(`${brand.storagePrefix}${route.visit_id}`);
+      const stored = localStorage.getItem(storageKey(route.visit_id));
       if (stored) {
         setMissions(JSON.parse(stored));
-      } else if (navigator.onLine) {
-        const freshMissions = await mockApi.getMissions(route.visit_id);
-        setMissions(freshMissions);
-        // Cache in IndexedDB for offline
-        if (brandId) await offlineDb.saveMissions(brandId, String(route.visit_id), freshMissions);
       } else {
-        // Offline: try IndexedDB
-        const cached = brandId ? await offlineDb.getMissions(brandId, String(route.visit_id)) : null;
-        if (cached) setMissions(cached);
-        else setMissions([]);
+        // Use missionsMap from getRoutes (already in memory)
+        const fromMap = mockApi.getMissionsFromMap(missionsMapRef.current, route.visit_id);
+        if (fromMap.length > 0) {
+          setMissions(fromMap);
+        } else if (!navigator.onLine && brandId) {
+          // Offline fallback: try IndexedDB
+          const cached = await offlineDb.getMissions(brandId, String(route.visit_id));
+          setMissions(cached || []);
+        } else {
+          setMissions([]);
+        }
       }
       setScreen(AppScreen.CUSTOMER_DETAIL);
     } catch (e) {
       // Network error fallback to IndexedDB
       const cached = brandId ? await offlineDb.getMissions(brandId, String(route.visit_id)) : null;
-      if (cached) setMissions(cached);
-      else setMissions([]);
+      setMissions(cached || []);
       setScreen(AppScreen.CUSTOMER_DETAIL);
     } finally { setIsLoading(false); }
   };
@@ -421,7 +460,7 @@ const App: React.FC = () => {
       if (selectedMission && selectedRoute) {
         const updated = missions.map(m => m.taskid === selectedMission.taskid ? { ...m, status: 'done' as const } : m);
         setMissions(updated);
-        localStorage.setItem(`${brand.storagePrefix}${selectedRoute.visit_id}`, JSON.stringify(updated));
+        localStorage.setItem(storageKey(selectedRoute.visit_id), JSON.stringify(updated));
 
         const allDone = updated.every(m => m.status === 'done');
         if (allDone) {
@@ -558,27 +597,7 @@ const App: React.FC = () => {
     }
   };
 
-  const ProductImage: React.FC<{ src: string, alt: string, className?: string }> = ({ src, alt, className }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [hasError, setHasError] = useState(false);
-    const finalSrc = hasError ? brand.images.fallbackProduct : src;
-    return (
-      <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
-        {!isLoaded && !hasError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 animate-pulse">
-            <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${brand.colors.primaryLight}`, borderTopColor: brand.colors.primary }}></div>
-          </div>
-        )}
-        <img
-            src={finalSrc}
-            alt={alt}
-            className={`w-full h-full object-contain transition-all duration-700 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
-            onLoad={() => setIsLoaded(true)}
-            onError={() => { if (!hasError) setHasError(true); }}
-        />
-      </div>
-    );
-  };
+  // ProductImage moved to module scope (see above App component) — PERF-003 FIX
 
   const filters = [
     { key: 'ALL', label: 'TODAS' },
@@ -1189,7 +1208,7 @@ const App: React.FC = () => {
                     <div className="flex gap-3 items-start mb-3">
                         <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 shadow-inner overflow-hidden border border-slate-100 relative">
                           {(m.category === 'sales' || m.category === 'activation') && m.suggested_products && m.suggested_products.length > 0 ? (
-                              <ProductImage src={m.suggested_products[0].image} alt={m.suggested_products[0].name} className="w-full h-full p-1.5" />
+                              <ProductImage src={m.suggested_products[0].image} alt={m.suggested_products[0].name} className="w-full h-full p-1.5" fallbackSrc={brand.images.fallbackProduct} primaryColor={brand.colors.primary} primaryLight={brand.colors.primaryLight} />
                           ) : (
                              <>
                                 {m.type === 'take_photo' && (
@@ -1275,7 +1294,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex items-start gap-5">
                                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 p-2 relative shadow-inner" style={{ backgroundColor: brand.colors.primaryLight }}>
-                                     <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                                     <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" fallbackSrc={brand.images.fallbackProduct} primaryColor={brand.colors.primary} primaryLight={brand.colors.primaryLight} />
                                      <div className="absolute -bottom-2 -right-2 rounded-full p-1 text-white border-2 border-white" style={{ backgroundColor: brand.colors.primary }}>
                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                                      </div>
@@ -1337,7 +1356,7 @@ const App: React.FC = () => {
                          {hasProducts ? selectedMission.suggested_products?.map((product) => (
                              <div key={product.id} className="bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm">
                                  <div className="w-14 h-16 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 p-1.5 relative overflow-hidden">
-                                     <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                                     <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" fallbackSrc={brand.images.fallbackProduct} primaryColor={brand.colors.primary} primaryLight={brand.colors.primaryLight} />
                                  </div>
                                  <div className="flex-1 min-w-0">
                                      <h4 className="text-sm font-black text-slate-900 mb-0.5 leading-tight">{product.name}</h4>
