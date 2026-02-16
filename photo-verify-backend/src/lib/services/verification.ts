@@ -5,12 +5,12 @@
 // 1. Validate input
 // 2. Call Vision API
 // 3. Evaluate criteria
-// 4. Store results
+// 4. Store results + token usage + cost
 // 5. Update task status
 
 import { eq, and } from 'drizzle-orm';
 import { getDb, schema } from '@/lib/db';
-import { analyzeImage, type VisionAnalysisResult } from './vision';
+import { analyzeImage, estimateCostUsd, type VisionAnalysisResult, type VisionAnalysisWithUsage, type TokenUsage } from './vision';
 import type {
   AuthContext,
   PhotoVerificationConfig,
@@ -19,6 +19,14 @@ import type {
   VerificationCriterion,
   AIProvider,
 } from '@/lib/types';
+
+// --- Extended result with billing data ---
+interface VerificationResultInternal extends VerificationResult {
+  retryCount?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  estimatedCostUsd?: number;
+}
 
 // --- Evaluate criteria results against config ---
 function evaluateCriteria(
@@ -119,6 +127,9 @@ export async function verifyPhoto(
     configUsed: config,
     modelUsed: result.modelUsed,
     processingTimeMs: result.processingTimeMs,
+    inputTokens: result.inputTokens ?? null,
+    outputTokens: result.outputTokens ?? null,
+    estimatedCostUsd: result.estimatedCostUsd ?? null,
     rawModelResponse: result.rawModelResponse,
     retryCount: result.retryCount || 0,
   });
@@ -142,6 +153,9 @@ export async function verifyPhoto(
       confidence: result.overallConfidence,
       modelUsed: result.modelUsed,
       processingTimeMs: result.processingTimeMs,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      estimatedCostUsd: result.estimatedCostUsd,
       retryCount: result.retryCount,
     },
   });
@@ -175,6 +189,9 @@ export async function verifyPhotoExternal(
     configUsed: config,
     modelUsed: result.modelUsed,
     processingTimeMs: result.processingTimeMs,
+    inputTokens: result.inputTokens ?? null,
+    outputTokens: result.outputTokens ?? null,
+    estimatedCostUsd: result.estimatedCostUsd ?? null,
     rawModelResponse: result.rawModelResponse,
     retryCount: result.retryCount || 0,
   });
@@ -193,6 +210,9 @@ export async function verifyPhotoExternal(
       confidence: result.overallConfidence,
       modelUsed: result.modelUsed,
       processingTimeMs: result.processingTimeMs,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      estimatedCostUsd: result.estimatedCostUsd,
       retryCount: result.retryCount,
     },
   });
@@ -206,7 +226,7 @@ async function runVerification(
   config: PhotoVerificationConfig,
   auth: AuthContext,
   startTime: number,
-): Promise<VerificationResult & { retryCount?: number }> {
+): Promise<VerificationResultInternal> {
   if (!config || !config.criteria || config.criteria.length === 0) {
     throw new Error('Verification configuration has no criteria');
   }
@@ -218,15 +238,19 @@ async function runVerification(
   const modelUsedLabel = `${provider}/${model}`;
 
   // 1. Call Vision API with retry logic
-  let analysisResult: VisionAnalysisResult | null = null;
+  let analysisWithUsage: VisionAnalysisWithUsage | null = null;
   let retryCount = 0;
   let lastError: Error | null = null;
+  let totalTokenUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
 
   const maxRetries = config.maxRetries || 2;
 
-  while (retryCount <= maxRetries && !analysisResult) {
+  while (retryCount <= maxRetries && !analysisWithUsage) {
     try {
-      analysisResult = await analyzeImage(imageInput, config);
+      analysisWithUsage = await analyzeImage(imageInput, config);
+      // Accumulate tokens from successful attempt
+      totalTokenUsage.inputTokens += analysisWithUsage.tokenUsage.inputTokens;
+      totalTokenUsage.outputTokens += analysisWithUsage.tokenUsage.outputTokens;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       retryCount++;
@@ -237,7 +261,7 @@ async function runVerification(
   }
 
   // 2. If all retries failed
-  if (!analysisResult) {
+  if (!analysisWithUsage) {
     const processingTimeMs = Date.now() - startTime;
 
     if (config.fallbackToManual) {
@@ -250,6 +274,9 @@ async function runVerification(
         processedAt: new Date().toISOString(),
         rawModelResponse: lastError?.message || 'All retries failed',
         retryCount,
+        inputTokens: totalTokenUsage.inputTokens,
+        outputTokens: totalTokenUsage.outputTokens,
+        estimatedCostUsd: estimateCostUsd(model, totalTokenUsage),
       };
     }
 
@@ -257,7 +284,7 @@ async function runVerification(
   }
 
   // 3. Evaluate criteria
-  const criteriaResults = evaluateCriteria(analysisResult, config);
+  const criteriaResults = evaluateCriteria(analysisWithUsage.analysis, config);
   const allRequiredPassed = config.criteria
     .filter((c: VerificationCriterion) => c.required)
     .every((c: VerificationCriterion) => {
@@ -265,10 +292,11 @@ async function runVerification(
       return result?.passed === true;
     });
 
-  const overallConfidence = analysisResult.overall_confidence;
+  const overallConfidence = analysisWithUsage.analysis.overall_confidence;
   const passed = allRequiredPassed && overallConfidence >= config.confidenceThreshold;
 
   const processingTimeMs = Date.now() - startTime;
+  const costUsd = estimateCostUsd(model, totalTokenUsage);
 
   return {
     passed,
@@ -277,7 +305,10 @@ async function runVerification(
     modelUsed: modelUsedLabel,
     processingTimeMs,
     processedAt: new Date().toISOString(),
-    rawModelResponse: JSON.stringify(analysisResult),
+    rawModelResponse: JSON.stringify(analysisWithUsage.analysis),
     retryCount,
+    inputTokens: totalTokenUsage.inputTokens,
+    outputTokens: totalTokenUsage.outputTokens,
+    estimatedCostUsd: costUsd,
   };
 }

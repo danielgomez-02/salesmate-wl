@@ -3,6 +3,7 @@
 // ============================================
 // Abstraction layer over OpenAI Vision & Google Gemini
 // Automatically routes to the correct provider based on config
+// Tracks token usage for billing per tenant
 
 import OpenAI from 'openai';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
@@ -33,6 +34,13 @@ function getGeminiClient(): GoogleGenerativeAI {
   return _geminiClient;
 }
 
+// ── Token usage tracking ──
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 // ── Response structure we expect from any model ──
 
 export interface VisionAnalysisResult {
@@ -45,6 +53,38 @@ export interface VisionAnalysisResult {
   }>;
   overall_assessment: string;
   overall_confidence: number;
+}
+
+// ── Combined result with token usage ──
+
+export interface VisionAnalysisWithUsage {
+  analysis: VisionAnalysisResult;
+  tokenUsage: TokenUsage;
+}
+
+// ── Pricing table (USD per 1M tokens) ──
+
+interface ModelPricing {
+  inputPer1M: number;
+  outputPer1M: number;
+}
+
+const MODEL_PRICING: Record<string, ModelPricing> = {
+  // OpenAI
+  'gpt-4o-mini':        { inputPer1M: 0.15,  outputPer1M: 0.60 },
+  'gpt-4o':             { inputPer1M: 2.50,  outputPer1M: 10.00 },
+  // Gemini
+  'gemini-2.0-flash':      { inputPer1M: 0.10,  outputPer1M: 0.40 },
+  'gemini-2.0-flash-lite': { inputPer1M: 0.025, outputPer1M: 0.10 },
+  'gemini-1.5-pro':        { inputPer1M: 1.25,  outputPer1M: 5.00 },
+};
+
+export function estimateCostUsd(model: string, usage: TokenUsage): number {
+  const pricing = MODEL_PRICING[model];
+  if (!pricing) return 0;
+  const inputCost = (usage.inputTokens / 1_000_000) * pricing.inputPer1M;
+  const outputCost = (usage.outputTokens / 1_000_000) * pricing.outputPer1M;
+  return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // 6 decimal precision
 }
 
 // ── Shared prompt builders ──
@@ -113,7 +153,7 @@ async function analyzeWithOpenAI(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig,
   model: string,
-): Promise<VisionAnalysisResult> {
+): Promise<VisionAnalysisWithUsage> {
   const client = getOpenAIClient();
 
   const imageContent: OpenAI.Chat.Completions.ChatCompletionContentPart = imageInput.url
@@ -145,7 +185,15 @@ async function analyzeWithOpenAI(
     throw new Error('Empty response from OpenAI vision model');
   }
 
-  return parseVisionResponse(content);
+  const tokenUsage: TokenUsage = {
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
+  };
+
+  return {
+    analysis: parseVisionResponse(content),
+    tokenUsage,
+  };
 }
 
 // ── Gemini Vision Provider ──
@@ -154,7 +202,7 @@ async function analyzeWithGemini(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig,
   model: string,
-): Promise<VisionAnalysisResult> {
+): Promise<VisionAnalysisWithUsage> {
   const client = getGeminiClient();
   const genModel: GenerativeModel = client.getGenerativeModel({
     model,
@@ -202,7 +250,17 @@ async function analyzeWithGemini(
     throw new Error('Empty response from Gemini vision model');
   }
 
-  return parseVisionResponse(content);
+  // Extract token usage from Gemini's usageMetadata
+  const usageMetadata = response.usageMetadata;
+  const tokenUsage: TokenUsage = {
+    inputTokens: usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: usageMetadata?.candidatesTokenCount ?? 0,
+  };
+
+  return {
+    analysis: parseVisionResponse(content),
+    tokenUsage,
+  };
 }
 
 // ── Shared response parser ──
@@ -241,7 +299,7 @@ function parseVisionResponse(content: string): VisionAnalysisResult {
 export async function analyzeImage(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig
-): Promise<VisionAnalysisResult> {
+): Promise<VisionAnalysisWithUsage> {
   const provider: AIProvider = config.provider || 'openai';
   const model = config.model || DEFAULT_MODELS[provider];
 
@@ -260,13 +318,13 @@ export function getAvailableModels(): Array<{
   id: string;
   name: string;
   provider: AIProvider;
-  costPer1kImages: string;
+  pricing: ModelPricing;
 }> {
   return [
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', costPer1kImages: '~$0.15' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', costPer1kImages: '~$2.50' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', costPer1kImages: '~$0.03' },
-    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'gemini', costPer1kImages: '~$0.01' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', costPer1kImages: '~$1.25' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', pricing: MODEL_PRICING['gpt-4o-mini'] },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', pricing: MODEL_PRICING['gpt-4o'] },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', pricing: MODEL_PRICING['gemini-2.0-flash'] },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'gemini', pricing: MODEL_PRICING['gemini-2.0-flash-lite'] },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', pricing: MODEL_PRICING['gemini-1.5-pro'] },
   ];
 }

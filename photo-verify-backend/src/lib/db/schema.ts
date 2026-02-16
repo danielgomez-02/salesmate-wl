@@ -64,6 +64,9 @@ export const verifications = pgTable('verifications', {
   configUsed: jsonb('config_used'),  // Store the config snapshot used for this verification
   modelUsed: text('model_used').notNull(),
   processingTimeMs: integer('processing_time_ms').notNull(),
+  inputTokens: integer('input_tokens'),
+  outputTokens: integer('output_tokens'),
+  estimatedCostUsd: real('estimated_cost_usd'),
   rawModelResponse: text('raw_model_response'),
   retryCount: integer('retry_count').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
