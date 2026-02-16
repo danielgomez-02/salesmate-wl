@@ -32,8 +32,6 @@ export async function GET(request: NextRequest) {
     const fromDate = searchParams.get('from') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const toDate = searchParams.get('to') || new Date().toISOString().split('T')[0];
     const groupBy = searchParams.get('groupBy') || 'day';
-    const filterTenantId = searchParams.get('tenantId') || auth.tenantId;
-
     // Only allow filtering other tenants if admin
     const tenantId = auth.role === 'admin' && searchParams.get('tenantId')
       ? searchParams.get('tenantId')!
@@ -127,7 +125,7 @@ export async function GET(request: NextRequest) {
       `);
     }
 
-    const summary = summaryResult.rows?.[0] || summaryResult[0] || {};
+    const summary = summaryResult.rows[0] ?? {};
 
     return NextResponse.json(
       {
@@ -136,9 +134,9 @@ export async function GET(request: NextRequest) {
           period: { from: fromDate, to: toDate, groupBy },
           tenantId,
           summary,
-          byModel: byModel.rows || byModel,
-          timeSeries: timeSeries.rows || timeSeries,
-          ...(allTenants ? { allTenants: allTenants.rows || allTenants } : {}),
+          byModel: byModel.rows,
+          timeSeries: timeSeries.rows,
+          ...(allTenants ? { allTenants: allTenants.rows } : {}),
         },
         meta: { tenantId: auth.tenantId, requestId, timestamp: new Date().toISOString() },
       } satisfies ApiResponse,
