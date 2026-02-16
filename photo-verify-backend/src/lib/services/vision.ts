@@ -1,26 +1,40 @@
 // ============================================
-// OpenAI Vision Service
+// Multi-Provider Vision Service
 // ============================================
-// Abstraction layer over OpenAI's Vision API
-// Designed to be model-agnostic for future swaps
+// Abstraction layer over OpenAI Vision & Google Gemini
+// Automatically routes to the correct provider based on config
 
 import OpenAI from 'openai';
-import type { PhotoVerificationConfig, VerificationCriterion } from '@/lib/types';
+import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import type { PhotoVerificationConfig, VerificationCriterion, AIProvider } from '@/lib/types';
 
-// --- Initialize OpenAI client (singleton) ---
-let _client: OpenAI | null = null;
+// ── Singleton clients ──
 
-function getClient(): OpenAI {
-  if (!_client) {
+let _openaiClient: OpenAI | null = null;
+let _geminiClient: GoogleGenerativeAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!_openaiClient) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY environment variable is not set');
     }
-    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
-  return _client;
+  return _openaiClient;
 }
 
-// --- Response structure we expect from the model ---
+function getGeminiClient(): GoogleGenerativeAI {
+  if (!_geminiClient) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    _geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+  return _geminiClient;
+}
+
+// ── Response structure we expect from any model ──
+
 export interface VisionAnalysisResult {
   criteria_results: Array<{
     criterion_id: string;
@@ -33,7 +47,8 @@ export interface VisionAnalysisResult {
   overall_confidence: number;
 }
 
-// --- Build the system prompt for verification ---
+// ── Shared prompt builders ──
+
 function buildSystemPrompt(config: PhotoVerificationConfig): string {
   return `You are an expert image verification system for retail/field operations.
 Your job is to analyze photos and verify specific criteria.
@@ -64,7 +79,6 @@ Response format:
 }`;
 }
 
-// --- Build the user prompt with criteria details ---
 function buildUserPrompt(config: PhotoVerificationConfig): string {
   const criteriaList = config.criteria
     .map((c: VerificationCriterion, i: number) => {
@@ -86,15 +100,22 @@ ${criteriaList}
 Analyze the image carefully and respond with JSON containing results for each criterion.`;
 }
 
-// --- Main analysis function ---
-export async function analyzeImage(
-  imageInput: { url?: string; base64?: string },
-  config: PhotoVerificationConfig
-): Promise<VisionAnalysisResult> {
-  const client = getClient();
-  const model = config.model || process.env.DEFAULT_VISION_MODEL || 'gpt-4o-mini';
+// ── Default models per provider ──
 
-  // Build image content part
+const DEFAULT_MODELS: Record<AIProvider, string> = {
+  openai: 'gpt-4o-mini',
+  gemini: 'gemini-2.0-flash',
+};
+
+// ── OpenAI Vision Provider ──
+
+async function analyzeWithOpenAI(
+  imageInput: { url?: string; base64?: string },
+  config: PhotoVerificationConfig,
+  model: string,
+): Promise<VisionAnalysisResult> {
+  const client = getOpenAIClient();
+
   const imageContent: OpenAI.Chat.Completions.ChatCompletionContentPart = imageInput.url
     ? { type: 'image_url', image_url: { url: imageInput.url, detail: 'high' } }
     : { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageInput.base64}`, detail: 'high' } };
@@ -115,19 +136,93 @@ export async function analyzeImage(
       },
     ],
     max_tokens: 2000,
-    temperature: 0.1, // Low temperature for consistent analysis
+    temperature: 0.1,
     response_format: { type: 'json_object' },
   });
 
   const content = response.choices[0]?.message?.content;
   if (!content) {
-    throw new Error('Empty response from vision model');
+    throw new Error('Empty response from OpenAI vision model');
   }
 
-  try {
-    const parsed = JSON.parse(content) as VisionAnalysisResult;
+  return parseVisionResponse(content);
+}
 
-    // Validate the response structure
+// ── Gemini Vision Provider ──
+
+async function analyzeWithGemini(
+  imageInput: { url?: string; base64?: string },
+  config: PhotoVerificationConfig,
+  model: string,
+): Promise<VisionAnalysisResult> {
+  const client = getGeminiClient();
+  const genModel: GenerativeModel = client.getGenerativeModel({
+    model,
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 2000,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  // Build the full prompt (Gemini combines system + user into one)
+  const fullPrompt = `${buildSystemPrompt(config)}\n\n${buildUserPrompt(config)}`;
+
+  // Prepare image part
+  let imagePart: { inlineData: { mimeType: string; data: string } };
+
+  if (imageInput.base64) {
+    imagePart = {
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: imageInput.base64,
+      },
+    };
+  } else if (imageInput.url) {
+    // For URL images, fetch the image and convert to base64
+    const imageResponse = await fetch(imageInput.url);
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    imagePart = {
+      inlineData: {
+        mimeType: contentType,
+        data: base64,
+      },
+    };
+  } else {
+    throw new Error('No image provided');
+  }
+
+  const result = await genModel.generateContent([fullPrompt, imagePart]);
+  const response = result.response;
+  const content = response.text();
+
+  if (!content) {
+    throw new Error('Empty response from Gemini vision model');
+  }
+
+  return parseVisionResponse(content);
+}
+
+// ── Shared response parser ──
+
+function parseVisionResponse(content: string): VisionAnalysisResult {
+  try {
+    // Clean potential markdown code fences
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.slice(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.slice(3);
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.slice(0, -3);
+    }
+    cleaned = cleaned.trim();
+
+    const parsed = JSON.parse(cleaned) as VisionAnalysisResult;
+
     if (!parsed.criteria_results || !Array.isArray(parsed.criteria_results)) {
       throw new Error('Invalid response structure: missing criteria_results array');
     }
@@ -141,10 +236,37 @@ export async function analyzeImage(
   }
 }
 
-// --- Get available models ---
-export function getAvailableModels(): Array<{ id: string; name: string; costPer1kImages: string }> {
+// ── Main analysis function (routes to correct provider) ──
+
+export async function analyzeImage(
+  imageInput: { url?: string; base64?: string },
+  config: PhotoVerificationConfig
+): Promise<VisionAnalysisResult> {
+  const provider: AIProvider = config.provider || 'openai';
+  const model = config.model || DEFAULT_MODELS[provider];
+
+  switch (provider) {
+    case 'gemini':
+      return analyzeWithGemini(imageInput, config, model);
+    case 'openai':
+    default:
+      return analyzeWithOpenAI(imageInput, config, model);
+  }
+}
+
+// ── Get available models (for API docs / UI) ──
+
+export function getAvailableModels(): Array<{
+  id: string;
+  name: string;
+  provider: AIProvider;
+  costPer1kImages: string;
+}> {
   return [
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', costPer1kImages: '~$0.15' },
-    { id: 'gpt-4o', name: 'GPT-4o', costPer1kImages: '~$2.50' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', costPer1kImages: '~$0.15' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', costPer1kImages: '~$2.50' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', costPer1kImages: '~$0.03' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'gemini', costPer1kImages: '~$0.01' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', costPer1kImages: '~$1.25' },
   ];
 }

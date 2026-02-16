@@ -69,6 +69,8 @@ export interface InsightChip {
 }
 
 // ── Photo Verification Types ──
+export type AIProvider = 'openai' | 'gemini';
+
 export interface VerificationCriterion {
   id: string;
   label: string;
@@ -82,7 +84,8 @@ export interface VerificationCriterion {
 export interface PhotoVerificationConfig {
   prompt: string;
   criteria: VerificationCriterion[];
-  model?: 'gpt-4o' | 'gpt-4o-mini';
+  provider?: AIProvider;
+  model?: string; // e.g., 'gpt-4o-mini', 'gemini-2.0-flash'
   maxRetries?: number;
   fallbackToManual?: boolean;
   confidenceThreshold?: number;

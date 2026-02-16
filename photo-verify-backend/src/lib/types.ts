@@ -17,11 +17,16 @@ export const VerificationCriterionSchema = z.object({
 
 export type VerificationCriterion = z.infer<typeof VerificationCriterionSchema>;
 
+// --- AI Provider ---
+export const AIProviderSchema = z.enum(['openai', 'gemini']).default('openai');
+export type AIProvider = z.infer<typeof AIProviderSchema>;
+
 // --- Photo Verification Config (embedded in task) ---
 export const PhotoVerificationConfigSchema = z.object({
   prompt: z.string().describe('Instructions for the vision model'),
   criteria: z.array(VerificationCriterionSchema).min(1),
-  model: z.enum(['gpt-4o', 'gpt-4o-mini']).default('gpt-4o-mini'),
+  provider: AIProviderSchema,
+  model: z.string().default('gpt-4o-mini'), // Model within the provider (e.g., 'gpt-4o-mini', 'gemini-2.0-flash')
   maxRetries: z.number().default(2),
   fallbackToManual: z.boolean().default(true),
   confidenceThreshold: z.number().min(0).max(1).default(0.8),
@@ -100,7 +105,8 @@ export const CreateTenantSchema = z.object({
   config: z.object({
     maxRequestsPerMinute: z.number().default(30),
     maxRequestsPerDay: z.number().default(1000),
-    defaultModel: z.enum(['gpt-4o', 'gpt-4o-mini']).default('gpt-4o-mini'),
+    defaultProvider: AIProviderSchema,
+    defaultModel: z.string().default('gpt-4o-mini'),
     storageLimitMb: z.number().default(100),
     allowedOrigins: z.array(z.string()).default([]),
   }).default({}),

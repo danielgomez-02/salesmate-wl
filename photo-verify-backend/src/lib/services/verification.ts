@@ -17,6 +17,7 @@ import type {
   CriterionResult,
   VerificationResult,
   VerificationCriterion,
+  AIProvider,
 } from '@/lib/types';
 
 // --- Evaluate criteria results against config ---
@@ -210,6 +211,12 @@ async function runVerification(
     throw new Error('Verification configuration has no criteria');
   }
 
+  // Resolve provider and model
+  const provider: AIProvider = config.provider || 'openai';
+  const defaultModels: Record<AIProvider, string> = { openai: 'gpt-4o-mini', gemini: 'gemini-2.0-flash' };
+  const model = config.model || defaultModels[provider];
+  const modelUsedLabel = `${provider}/${model}`;
+
   // 1. Call Vision API with retry logic
   let analysisResult: VisionAnalysisResult | null = null;
   let retryCount = 0;
@@ -238,7 +245,7 @@ async function runVerification(
         passed: false,
         overallConfidence: 0,
         criteriaResults: [],
-        modelUsed: config.model || 'gpt-4o-mini',
+        modelUsed: modelUsedLabel,
         processingTimeMs,
         processedAt: new Date().toISOString(),
         rawModelResponse: lastError?.message || 'All retries failed',
@@ -267,7 +274,7 @@ async function runVerification(
     passed,
     overallConfidence,
     criteriaResults,
-    modelUsed: config.model || 'gpt-4o-mini',
+    modelUsed: modelUsedLabel,
     processingTimeMs,
     processedAt: new Date().toISOString(),
     rawModelResponse: JSON.stringify(analysisResult),
