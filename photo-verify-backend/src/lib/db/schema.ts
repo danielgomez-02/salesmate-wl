@@ -54,12 +54,14 @@ export const tasks = pgTable('tasks', {
 // --- Verifications (results of photo analysis) ---
 export const verifications = pgTable('verifications', {
   id: uuid('id').primaryKey().defaultRandom(),
-  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'cascade' }),  // Optional: for internal tasks
+  externalTaskId: text('external_task_id'),  // For tasks from external APIs (Retool, etc.)
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   imageUrl: text('image_url').notNull(),
   passed: boolean('passed').notNull(),
   overallConfidence: real('overall_confidence').notNull(),
   criteriaResults: jsonb('criteria_results').notNull().default([]),
+  configUsed: jsonb('config_used'),  // Store the config snapshot used for this verification
   modelUsed: text('model_used').notNull(),
   processingTimeMs: integer('processing_time_ms').notNull(),
   rawModelResponse: text('raw_model_response'),
@@ -67,8 +69,10 @@ export const verifications = pgTable('verifications', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index('verifications_task_idx').on(table.taskId),
+  index('verifications_external_task_idx').on(table.externalTaskId),
   index('verifications_tenant_idx').on(table.tenantId),
   index('verifications_tenant_created_idx').on(table.tenantId, table.createdAt),
+  index('verifications_tenant_external_idx').on(table.tenantId, table.externalTaskId),
 ]);
 
 // --- Audit Log (for tracking all operations) ---

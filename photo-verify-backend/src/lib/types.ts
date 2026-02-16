@@ -30,14 +30,24 @@ export const PhotoVerificationConfigSchema = z.object({
 export type PhotoVerificationConfig = z.infer<typeof PhotoVerificationConfigSchema>;
 
 // --- Verification Request ---
+// Supports two modes:
+// 1. Internal: taskId (references our DB) - config comes from task
+// 2. External/Hybrid: externalTaskId + config (task lives in Retool/external API)
 export const VerifyRequestSchema = z.object({
-  taskId: z.string(),
+  taskId: z.string().optional(),            // Internal task ID (from our DB)
+  externalTaskId: z.string().optional(),    // External task ID (from Retool, etc.)
   imageUrl: z.string().url().optional(),
   imageBase64: z.string().optional(),
-  config: PhotoVerificationConfigSchema.optional(), // Override task config
+  config: PhotoVerificationConfigSchema.optional(), // Required for external mode, optional override for internal
 }).refine(
   (data) => data.imageUrl || data.imageBase64,
   { message: 'Either imageUrl or imageBase64 must be provided' }
+).refine(
+  (data) => data.taskId || data.externalTaskId,
+  { message: 'Either taskId (internal) or externalTaskId (external) must be provided' }
+).refine(
+  (data) => !(data.externalTaskId && !data.config),
+  { message: 'config is required when using externalTaskId (external mode)' }
 );
 
 export type VerifyRequest = z.infer<typeof VerifyRequestSchema>;

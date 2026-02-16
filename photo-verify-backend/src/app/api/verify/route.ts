@@ -1,13 +1,14 @@
 // ============================================
 // POST /api/verify - Photo Verification Endpoint
 // ============================================
-// Core endpoint: receives a photo + taskId, runs
-// verification against the task's criteria config
+// Supports two modes:
+// 1. Internal: taskId (references our DB) - config from task
+// 2. External/Hybrid: externalTaskId + config inline (task in Retool/external API)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate, isAuthError } from '@/lib/auth/middleware';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
-import { verifyPhoto } from '@/lib/services/verification';
+import { verifyPhoto, verifyPhotoExternal } from '@/lib/services/verification';
 import { uploadBase64Image } from '@/lib/services/storage';
 import { VerifyRequestSchema, type ApiResponse, type VerificationResult } from '@/lib/types';
 
@@ -48,14 +49,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { taskId, imageUrl, imageBase64, config: configOverride } = parsed.data;
+    const { taskId, externalTaskId, imageUrl, imageBase64, config } = parsed.data;
 
-    // 4. If base64, upload to Blob first and get URL
+    // 4. Determine the reference ID for storage path
+    const referenceId = taskId || externalTaskId || requestId;
+
+    // 5. If base64, upload to Blob first and get URL
     let finalImageInput: { url?: string; base64?: string };
 
     if (imageBase64) {
       try {
-        const uploaded = await uploadBase64Image(auth.tenantId, taskId, imageBase64);
+        const uploaded = await uploadBase64Image(auth.tenantId, referenceId, imageBase64);
         finalImageInput = { url: uploaded.url };
       } catch {
         // If Blob upload fails, use base64 directly (works but uses more tokens)
@@ -65,21 +69,40 @@ export async function POST(request: NextRequest) {
       finalImageInput = { url: imageUrl };
     }
 
-    // 5. Run verification
-    const result: VerificationResult = await verifyPhoto(
-      taskId,
-      finalImageInput,
-      auth,
-      configOverride
-    );
+    // 6. Run verification based on mode
+    let result: VerificationResult;
 
-    // 6. Return result
+    if (taskId) {
+      // --- INTERNAL MODE: task lives in our DB ---
+      result = await verifyPhoto(taskId, finalImageInput, auth, config);
+    } else if (externalTaskId && config) {
+      // --- EXTERNAL/HYBRID MODE: task lives in Retool/external API ---
+      result = await verifyPhotoExternal(externalTaskId, finalImageInput, config, auth);
+    } else {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Either taskId or (externalTaskId + config) must be provided',
+          },
+          meta: { tenantId: auth.tenantId, requestId, timestamp: new Date().toISOString() },
+        } satisfies ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    // 7. Return result
     return NextResponse.json(
       {
         success: true,
-        data: result,
+        data: {
+          ...result,
+          mode: taskId ? 'internal' : 'external',
+          taskReference: taskId || externalTaskId,
+        },
         meta: { tenantId: auth.tenantId, requestId, timestamp: new Date().toISOString() },
-      } satisfies ApiResponse<VerificationResult>,
+      } satisfies ApiResponse,
       { status: 200 }
     );
   } catch (error) {

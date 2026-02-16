@@ -69,7 +69,7 @@ function evaluateCriteria(
   });
 }
 
-// --- Main verification function ---
+// --- Main verification function (Internal mode: task in our DB) ---
 export async function verifyPhoto(
   taskId: string,
   imageInput: { url?: string; base64?: string },
@@ -102,11 +102,115 @@ export async function verifyPhoto(
   // 2. Get verification config (override or from task)
   const config = configOverride || (task.photoVerificationConfig as PhotoVerificationConfig);
 
+  // 3. Run core verification logic
+  const result = await runVerification(imageInput, config, auth, startTime);
+
+  // 4. Store result linked to internal task
+  const imageUrl = imageInput.url || `base64:${(imageInput.base64 || '').slice(0, 50)}...`;
+
+  await db.insert(schema.verifications).values({
+    taskId,
+    tenantId: auth.tenantId,
+    imageUrl,
+    passed: result.passed,
+    overallConfidence: result.overallConfidence,
+    criteriaResults: result.criteriaResults,
+    configUsed: config,
+    modelUsed: result.modelUsed,
+    processingTimeMs: result.processingTimeMs,
+    rawModelResponse: result.rawModelResponse,
+    retryCount: result.retryCount || 0,
+  });
+
+  // 5. Update internal task status
+  const newStatus = result.passed ? 'completed' : (config.fallbackToManual ? 'manual_review' : 'failed');
+  await db.update(schema.tasks)
+    .set({ status: newStatus, updatedAt: new Date() })
+    .where(eq(schema.tasks.id, taskId));
+
+  // 6. Audit log
+  await db.insert(schema.auditLog).values({
+    tenantId: auth.tenantId,
+    action: 'photo_verified',
+    entityType: 'task',
+    entityId: taskId,
+    userId: auth.userId,
+    details: {
+      mode: 'internal',
+      passed: result.passed,
+      confidence: result.overallConfidence,
+      modelUsed: result.modelUsed,
+      processingTimeMs: result.processingTimeMs,
+      retryCount: result.retryCount,
+    },
+  });
+
+  return result;
+}
+
+// --- External/Hybrid verification (task lives in Retool/external API) ---
+export async function verifyPhotoExternal(
+  externalTaskId: string,
+  imageInput: { url?: string; base64?: string },
+  config: PhotoVerificationConfig,
+  auth: AuthContext,
+): Promise<VerificationResult> {
+  const db = getDb();
+  const startTime = Date.now();
+
+  // 1. Run core verification logic
+  const result = await runVerification(imageInput, config, auth, startTime);
+
+  // 2. Store result linked to external task ID
+  const imageUrl = imageInput.url || `base64:${(imageInput.base64 || '').slice(0, 50)}...`;
+
+  await db.insert(schema.verifications).values({
+    externalTaskId,
+    tenantId: auth.tenantId,
+    imageUrl,
+    passed: result.passed,
+    overallConfidence: result.overallConfidence,
+    criteriaResults: result.criteriaResults,
+    configUsed: config,
+    modelUsed: result.modelUsed,
+    processingTimeMs: result.processingTimeMs,
+    rawModelResponse: result.rawModelResponse,
+    retryCount: result.retryCount || 0,
+  });
+
+  // 3. Audit log
+  await db.insert(schema.auditLog).values({
+    tenantId: auth.tenantId,
+    action: 'photo_verified',
+    entityType: 'external_task',
+    entityId: externalTaskId,
+    userId: auth.userId,
+    details: {
+      mode: 'external',
+      externalTaskId,
+      passed: result.passed,
+      confidence: result.overallConfidence,
+      modelUsed: result.modelUsed,
+      processingTimeMs: result.processingTimeMs,
+      retryCount: result.retryCount,
+    },
+  });
+
+  return result;
+}
+
+// --- Core verification logic (shared by both modes) ---
+async function runVerification(
+  imageInput: { url?: string; base64?: string },
+  config: PhotoVerificationConfig,
+  auth: AuthContext,
+  startTime: number,
+): Promise<VerificationResult & { retryCount?: number }> {
   if (!config || !config.criteria || config.criteria.length === 0) {
-    throw new Error('Task has no verification configuration');
+    throw new Error('Verification configuration has no criteria');
   }
 
-  // 3. Call Vision API with retry logic
+  // 1. Call Vision API with retry logic
   let analysisResult: VisionAnalysisResult | null = null;
   let retryCount = 0;
   let lastError: Error | null = null;
@@ -120,22 +224,16 @@ export async function verifyPhoto(
       lastError = error instanceof Error ? error : new Error(String(error));
       retryCount++;
       if (retryCount <= maxRetries) {
-        // Exponential backoff: 1s, 2s, 4s
         await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
       }
     }
   }
 
-  // 4. If all retries failed
+  // 2. If all retries failed
   if (!analysisResult) {
     const processingTimeMs = Date.now() - startTime;
 
-    // If fallback to manual is enabled, mark for manual review
     if (config.fallbackToManual) {
-      await db.update(schema.tasks)
-        .set({ status: 'manual_review', updatedAt: new Date() })
-        .where(eq(schema.tasks.id, taskId));
-
       return {
         passed: false,
         overallConfidence: 0,
@@ -144,13 +242,14 @@ export async function verifyPhoto(
         processingTimeMs,
         processedAt: new Date().toISOString(),
         rawModelResponse: lastError?.message || 'All retries failed',
+        retryCount,
       };
     }
 
     throw new Error(`Verification failed after ${maxRetries} retries: ${lastError?.message}`);
   }
 
-  // 5. Evaluate criteria
+  // 3. Evaluate criteria
   const criteriaResults = evaluateCriteria(analysisResult, config);
   const allRequiredPassed = config.criteria
     .filter((c: VerificationCriterion) => c.required)
@@ -164,7 +263,7 @@ export async function verifyPhoto(
 
   const processingTimeMs = Date.now() - startTime;
 
-  const verificationResult: VerificationResult = {
+  return {
     passed,
     overallConfidence,
     criteriaResults,
@@ -172,45 +271,6 @@ export async function verifyPhoto(
     processingTimeMs,
     processedAt: new Date().toISOString(),
     rawModelResponse: JSON.stringify(analysisResult),
-  };
-
-  // 6. Store verification result
-  const imageUrl = imageInput.url || `base64:${(imageInput.base64 || '').slice(0, 50)}...`;
-
-  await db.insert(schema.verifications).values({
-    taskId,
-    tenantId: auth.tenantId,
-    imageUrl,
-    passed,
-    overallConfidence,
-    criteriaResults,
-    modelUsed: config.model || 'gpt-4o-mini',
-    processingTimeMs,
-    rawModelResponse: JSON.stringify(analysisResult),
     retryCount,
-  });
-
-  // 7. Update task status
-  const newStatus = passed ? 'completed' : (config.fallbackToManual ? 'manual_review' : 'failed');
-  await db.update(schema.tasks)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(schema.tasks.id, taskId));
-
-  // 8. Audit log
-  await db.insert(schema.auditLog).values({
-    tenantId: auth.tenantId,
-    action: 'photo_verified',
-    entityType: 'task',
-    entityId: taskId,
-    userId: auth.userId,
-    details: {
-      passed,
-      confidence: overallConfidence,
-      modelUsed: config.model || 'gpt-4o-mini',
-      processingTimeMs,
-      retryCount,
-    },
-  });
-
-  return verificationResult;
+  };
 }
