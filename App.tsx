@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { AppScreen, UserData, RouteItem, Goal, Mission, MissionCategory, InsightChip, Product, BrandConfig } from './types';
+import { AppScreen, UserData, RouteItem, Goal, Mission, MissionCategory, InsightChip, Product, BrandConfig, VerificationResult } from './types';
 import { mockApi, RoutesWithMissions } from './services/mockApi';
+import { verifyPhoto } from './services/photoVerifyApi';
 import Layout from './components/Layout';
 import { useBrand, createBlankBrand } from './context/BrandContext';
 import { offlineDb } from './services/offlineDb';
@@ -198,6 +199,11 @@ const App: React.FC = () => {
   const [tempPhoto, setTempPhoto] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [loginInput, setLoginInput] = useState(brand.defaultEmpCode);
+
+  // Photo verification state
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
 
   // PWA state
@@ -410,16 +416,21 @@ const App: React.FC = () => {
     }
 
     setTempPhoto(null);
+    setVerificationResult(null);
+    setVerificationError(null);
+    setIsVerifying(false);
     setScreen(AppScreen.MISSION_EXECUTION);
   };
 
-  const completeMission = async () => {
+  // Core completion logic (shared by normal and post-verification flows)
+  const finalizeMission = async (extraFeedback?: Record<string, unknown>) => {
     setIsValidating(true);
 
     if (selectedMission) {
       const feedbackData: any = {
          mission_type: selectedMission.type,
-         timestamp: new Date().toISOString()
+         timestamp: new Date().toISOString(),
+         ...extraFeedback,
       };
 
       if (selectedMission.type === 'dialog') {
@@ -441,7 +452,6 @@ const App: React.FC = () => {
          if (navigator.onLine) {
            await mockApi.updateTaskStatus(selectedMission.taskid, feedbackData);
          } else {
-           // Queue for sync when back online
            if (brandId && selectedRoute) {
              await offlineDb.queueMissionCompletion(brandId, String(selectedRoute.visit_id), String(selectedMission.taskid), feedbackData);
              setPendingSyncs(await offlineDb.getPendingSyncCount());
@@ -471,6 +481,66 @@ const App: React.FC = () => {
         setShowAchievement(true);
       }
     }, 400);
+  };
+
+  const completeMission = async () => {
+    if (!selectedMission) return;
+
+    // ── Photo Verification flow ──
+    if (selectedMission.type === 'take_photo' && selectedMission.verificationConfig && tempPhoto) {
+      setIsVerifying(true);
+      setVerificationResult(null);
+      setVerificationError(null);
+
+      try {
+        const result = await verifyPhoto(
+          String(selectedMission.taskid),
+          tempPhoto,
+          selectedMission.verificationConfig
+        );
+        setVerificationResult(result);
+        setIsVerifying(false);
+
+        if (result.passed) {
+          // Auto-complete after showing results briefly
+          setTimeout(() => {
+            finalizeMission({
+              verification_passed: true,
+              verification_confidence: result.overallConfidence,
+              verification_model: result.modelUsed,
+              verification_criteria_results: result.criteriaResults,
+            });
+          }, 1500);
+        }
+        // If failed, user sees results and can retry or force-complete
+        return;
+      } catch (err) {
+        console.error('[PhotoVerify] Verification error:', err);
+        setVerificationError(err instanceof Error ? err.message : 'Error de verificación');
+        setIsVerifying(false);
+        return;
+      }
+    }
+
+    // ── Normal completion (no verification needed) ──
+    finalizeMission();
+  };
+
+  // Force-complete a mission after failed verification (user override)
+  const forceCompleteMission = () => {
+    finalizeMission({
+      verification_passed: false,
+      verification_overridden: true,
+      verification_result: verificationResult,
+    });
+  };
+
+  // Retry photo capture after failed verification
+  const retryPhotoCapture = () => {
+    setTempPhoto(null);
+    setVerificationResult(null);
+    setVerificationError(null);
+    cameraInputRef.current?.click();
   };
 
   const handleBack = () => {
@@ -577,6 +647,8 @@ const App: React.FC = () => {
 
   const isMissionReady = useMemo(() => {
     if (!selectedMission) return false;
+    // If verification already happened (passed or failed) and we're showing results, disable button
+    if (verificationResult !== null || isVerifying) return false;
     switch (selectedMission.type) {
       case 'take_photo': return !!tempPhoto;
       case 'dialog': return surveyValue !== null && starRating > 0;
@@ -585,7 +657,7 @@ const App: React.FC = () => {
       case 'user_input': return userInputVal.length > 0;
       default: return true;
     }
-  }, [selectedMission, tempPhoto, surveyValue, starRating, offerQty, userInputVal]);
+  }, [selectedMission, tempPhoto, surveyValue, starRating, offerQty, userInputVal, verificationResult, isVerifying]);
 
   const getChipStyle = (type: string) => {
     switch (type) {
@@ -1431,29 +1503,137 @@ const App: React.FC = () => {
                               {selectedMission.category === 'activation' ? 'Activación' : `Ejecución ${brand.labels.missionSystem}`}
                            </span>
                            <h2 className="text-xl font-black italic tracking-tighter leading-tight break-words">{selectedMission.name}</h2>
+                           {selectedMission.verificationConfig && (
+                             <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
+                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                               Verificación IA
+                             </span>
+                           )}
                         </div>
 
-                        <div onClick={() => cameraInputRef.current?.click()} className="w-full aspect-video bg-slate-50 rounded-[32px] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden cursor-pointer relative shadow-inner group">
-                           {tempPhoto ? (
-                             <img src={tempPhoto} className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" alt="Captured POS" />
-                           ) : (
-                             <div className="flex flex-col items-center gap-3 group-hover:scale-110 transition-transform p-3 text-center">
-                               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-200 shrink-0">
-                                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <div className="relative">
+                          <div onClick={() => !isVerifying && !verificationResult ? cameraInputRef.current?.click() : null} className={`w-full aspect-video bg-slate-50 rounded-[32px] border-4 ${verificationResult ? (verificationResult.passed ? 'border-emerald-300' : 'border-red-300') : 'border-dashed border-slate-200'} flex flex-col items-center justify-center overflow-hidden cursor-pointer relative shadow-inner group`}>
+                             {tempPhoto ? (
+                               <img src={tempPhoto} className={`w-full h-full object-cover ${isVerifying ? 'opacity-50' : 'group-hover:opacity-80'} transition-opacity`} alt="Captured POS" />
+                             ) : (
+                               <div className="flex flex-col items-center gap-3 group-hover:scale-110 transition-transform p-3 text-center">
+                                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-200 shrink-0">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                 </div>
+                                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] break-words">Ejecutar y capturar</span>
                                </div>
-                               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] break-words">Ejecutar y capturar</span>
-                             </div>
-                           )}
-                           <input type="file" ref={cameraInputRef} capture="environment" accept="image/*" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                 const reader = new FileReader();
-                                 reader.onload = () => setTempPhoto(reader.result as string);
-                                 reader.readAsDataURL(file);
-                              }
-                           }} />
+                             )}
+                             <input type="file" ref={cameraInputRef} capture="environment" accept="image/*" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                   setVerificationResult(null);
+                                   setVerificationError(null);
+                                   const reader = new FileReader();
+                                   reader.onload = () => setTempPhoto(reader.result as string);
+                                   reader.readAsDataURL(file);
+                                }
+                             }} />
+
+                             {/* ── Verification: Analyzing overlay ── */}
+                             {isVerifying && (
+                               <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10 rounded-[28px]">
+                                 <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+                                 <span className="text-sm font-black text-violet-700 uppercase tracking-widest">Analizando...</span>
+                                 <span className="text-[10px] font-bold text-slate-400">Verificación con IA en proceso</span>
+                               </div>
+                             )}
+
+                             {/* ── Verification: Result badge on photo ── */}
+                             {verificationResult && !isVerifying && (
+                               <div className="absolute top-3 right-3 z-10">
+                                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-[11px] font-bold uppercase tracking-wider shadow-lg ${verificationResult.passed ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                                   {verificationResult.passed ? (
+                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                   ) : (
+                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                   )}
+                                   {verificationResult.passed ? 'Aprobado' : 'No aprobado'}
+                                 </div>
+                               </div>
+                             )}
+                          </div>
                         </div>
-                        <p className="text-xs font-bold text-slate-500 italic px-4 text-center leading-relaxed break-words">"{selectedMission.instruction_text || selectedMission.description}"</p>
+
+                        {/* ── Verification: Criteria Results ── */}
+                        {verificationResult && !isVerifying && (
+                          <div className="space-y-2 animate-fade-in">
+                            <div className={`p-4 rounded-2xl border ${verificationResult.passed ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-xs font-black uppercase tracking-widest ${verificationResult.passed ? 'text-emerald-700' : 'text-red-700'}`}>
+                                  {verificationResult.passed ? 'Verificación exitosa' : 'Verificación fallida'}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  {Math.round(verificationResult.overallConfidence * 100)}% confianza
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                {verificationResult.criteriaResults.map((cr) => (
+                                  <div key={cr.criterionId} className="flex items-start gap-2 text-xs">
+                                    <span className={`mt-0.5 shrink-0 ${cr.passed ? 'text-emerald-500' : 'text-red-400'}`}>
+                                      {cr.passed ? '✓' : '✗'}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="font-bold text-slate-700 break-words">{cr.label}</span>
+                                      {cr.reasoning && (
+                                        <p className="text-[10px] text-slate-400 mt-0.5 break-words">{cr.reasoning}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Action buttons for failed verification */}
+                            {!verificationResult.passed && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={retryPhotoCapture}
+                                  className="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border-2 transition-all active:scale-95"
+                                  style={{ borderColor: brand.colors.primary, color: brand.colors.primary }}
+                                >
+                                  Reintentar foto
+                                </button>
+                                <button
+                                  onClick={forceCompleteMission}
+                                  className="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-slate-100 text-slate-500 border border-slate-200 transition-all active:scale-95"
+                                >
+                                  Completar igual
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── Verification: Error state ── */}
+                        {verificationError && !isVerifying && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 animate-fade-in">
+                            <p className="text-xs font-bold text-amber-700">Error al verificar la foto</p>
+                            <p className="text-[10px] text-amber-600 break-words">{verificationError}</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => { setVerificationError(null); completeMission(); }}
+                                className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-amber-300 text-amber-700 active:scale-95"
+                              >
+                                Reintentar
+                              </button>
+                              <button
+                                onClick={() => { setVerificationError(null); finalizeMission({ verification_error: verificationError }); }}
+                                className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-slate-100 text-slate-500 border border-slate-200 active:scale-95"
+                              >
+                                Completar sin verificar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!verificationResult && !verificationError && !isVerifying && (
+                          <p className="text-xs font-bold text-slate-500 italic px-4 text-center leading-relaxed break-words">"{selectedMission.instruction_text || selectedMission.description}"</p>
+                        )}
                      </div>
                     );
                 }
@@ -1515,11 +1695,11 @@ const App: React.FC = () => {
            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-slate-50 flex gap-4 max-w-lg mx-auto z-[60] shadow-[0_-15px_35px_rgba(0,0,0,0.05)]">
               <button
                 onClick={completeMission}
-                disabled={isValidating || !isMissionReady}
-                className={`w-full py-3 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all break-words leading-none ${isValidating || !isMissionReady ? 'bg-slate-300 cursor-not-allowed' : 'active:scale-95 hover:brightness-110'}`}
-                style={!isValidating && isMissionReady ? { backgroundColor: brand.colors.primary } : {}}
+                disabled={isValidating || isVerifying || !isMissionReady}
+                className={`w-full py-3 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all break-words leading-none ${isValidating || isVerifying || !isMissionReady ? 'bg-slate-300 cursor-not-allowed' : 'active:scale-95 hover:brightness-110'}`}
+                style={!isValidating && !isVerifying && isMissionReady ? { backgroundColor: brand.colors.primary } : {}}
               >
-                 {isValidating ? 'Validando...' : 'Completar misión'}
+                 {isValidating ? 'Validando...' : isVerifying ? 'Analizando foto...' : (selectedMission?.type === 'take_photo' && selectedMission?.verificationConfig && tempPhoto && !verificationResult) ? 'Verificar y completar' : 'Completar misión'}
               </button>
            </div>
         </div>

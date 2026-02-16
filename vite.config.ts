@@ -22,6 +22,12 @@ export default defineConfig({
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/api\/updateTask/, '/v1/workflows/6b212243-e544-4494-b114-fbc436244fc2/startTrigger'),
         },
+        // Dev proxy: route /api/photoVerify to photo-verify backend
+        '/api/photoVerify': {
+          target: 'https://salesmate-wl.vercel.app',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api\/photoVerify/, '/api'),
+        },
       },
     },
     plugins: [

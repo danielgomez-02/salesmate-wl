@@ -68,6 +68,46 @@ export interface InsightChip {
   icon?: string;
 }
 
+// ── Photo Verification Types ──
+export interface VerificationCriterion {
+  id: string;
+  label: string;
+  type: 'boolean' | 'count' | 'text';
+  required: boolean;
+  expectedValue?: string | number | boolean;
+  min?: number;
+  max?: number;
+}
+
+export interface PhotoVerificationConfig {
+  prompt: string;
+  criteria: VerificationCriterion[];
+  model?: 'gpt-4o' | 'gpt-4o-mini';
+  maxRetries?: number;
+  fallbackToManual?: boolean;
+  confidenceThreshold?: number;
+}
+
+export interface CriterionResult {
+  criterionId: string;
+  label: string;
+  passed: boolean;
+  value: string | number | boolean | null;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface VerificationResult {
+  passed: boolean;
+  overallConfidence: number;
+  criteriaResults: CriterionResult[];
+  modelUsed: string;
+  processingTimeMs: number;
+  processedAt: string;
+  mode: 'internal' | 'external';
+  taskReference: string;
+}
+
 export interface Mission {
   taskid: number;
   code: string;
@@ -77,7 +117,7 @@ export interface Mission {
   category: MissionCategory;
   required: boolean; // Essential or Extra
   status: 'pending' | 'done';
-  impact_score: number; 
+  impact_score: number;
   priority_label?: string;
   insights?: InsightChip[];
   suggested_products?: Product[];
@@ -87,6 +127,7 @@ export interface Mission {
     options: string[];
   };
   instruction_text?: string;
+  verificationConfig?: PhotoVerificationConfig;
 }
 
 export enum AppScreen {

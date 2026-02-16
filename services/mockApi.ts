@@ -1,4 +1,4 @@
-import { UserData, RouteItem, Goal, Mission, MissionCategory, Product } from '../types';
+import { UserData, RouteItem, Goal, Mission, MissionCategory, Product, PhotoVerificationConfig } from '../types';
 
 // ── API Configuration (from environment variables) ──
 const ROUTES_API_KEY = import.meta.env.VITE_RETOOL_ROUTES_API_KEY || '';
@@ -147,6 +147,7 @@ interface RawTaskItem {
   priority_label?: string;
   price?: number;
   suggested_qty?: number;
+  verification_config?: PhotoVerificationConfig;
 }
 
 interface RawSkuItem {
@@ -216,9 +217,23 @@ function parseTaskToMission(taskItem: RawTaskItem, visitId: number, tIndex: numb
     }
   } else if (typeUpper === 'TAKE_PHOTO' || typeUpper === 'PHOTO' || typeUpper === 'IMAGE') {
     type = 'take_photo';
+    // Photo verification config can come from the task or its detail
   } else if (typeUpper === 'USER_INPUT' || typeUpper === 'KPI') {
     type = 'user_input';
   }
+
+  // Parse verification config from Retool (can be on the task or task_detail)
+  const rawVerifConfig = taskItem.verification_config || detail.verification_config;
+  const verificationConfig: PhotoVerificationConfig | undefined = rawVerifConfig
+    ? {
+        prompt: rawVerifConfig.prompt || '',
+        criteria: Array.isArray(rawVerifConfig.criteria) ? rawVerifConfig.criteria : [],
+        model: rawVerifConfig.model,
+        maxRetries: rawVerifConfig.maxRetries,
+        fallbackToManual: rawVerifConfig.fallbackToManual,
+        confidenceThreshold: rawVerifConfig.confidenceThreshold,
+      }
+    : undefined;
 
   return {
     taskid: taskItem.assignation_id || taskItem.task_id || generateId(`TASK_${visitId}_${tIndex}`),
@@ -233,7 +248,8 @@ function parseTaskToMission(taskItem: RawTaskItem, visitId: number, tIndex: numb
     suggested_products: suggestedProducts,
     instruction_steps: instructionSteps || detail.instruction_steps,
     questionnaire,
-    instruction_text: detail.instruction_text || detail.instruction_steps?.join(' ') || detail.description || ''
+    instruction_text: detail.instruction_text || detail.instruction_steps?.join(' ') || detail.description || '',
+    verificationConfig,
   };
 }
 
