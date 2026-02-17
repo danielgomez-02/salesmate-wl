@@ -29,10 +29,15 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
   return (
     <div className="flex flex-col min-h-screen max-w-lg mx-auto bg-white shadow-2xl relative border-x border-slate-100 overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100/60" role="banner"
-        style={{ minHeight: isDashboard ? '52px' : '44px' }}
+      <header className="sticky top-0 z-40 border-b" role="banner"
+        style={{
+          minHeight: isDashboard ? '60px' : '48px',
+          backgroundColor: isDashboard ? brand.colors.primary : 'rgba(255,255,255,0.95)',
+          backdropFilter: isDashboard ? 'none' : 'blur(12px)',
+          borderColor: isDashboard ? 'transparent' : 'rgba(241,245,249,0.6)',
+        }}
       >
-        <div className="flex items-center px-4" style={{ height: isDashboard ? '52px' : '44px' }}>
+        <div className="flex items-center px-4" style={{ height: isDashboard ? '60px' : '48px' }}>
           {/* Back button — hidden on dashboard & landing */}
           {!shouldHideBack && (
             <button
@@ -51,21 +56,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
                 <img
                   src={brand.images.logo}
                   alt={brand.labels.appName}
-                  className="h-7 max-w-[120px] object-contain"
+                  className="h-7 max-w-[120px] object-contain brightness-0 invert"
                   style={{ imageRendering: 'auto' }}
                 />
               ) : (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: brand.colors.primary }}
-                  >
-                    {brand.labels.appName[0]}
-                  </div>
-                  <span className="text-sm font-bold text-slate-900 tracking-tight font-display">
-                    {brand.labels.appName}
-                  </span>
-                </div>
+                <span className="text-sm font-bold text-white tracking-tight font-display">
+                  {brand.labels.appName}
+                </span>
               )}
             </div>
           ) : (
@@ -75,15 +72,15 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
             </h1>
           )}
 
-          {/* Right side: user avatar on dashboard */}
+          {/* Right side: profile icon on dashboard */}
           {isDashboard && (
             <button
               onClick={() => setScreen(AppScreen.PROFILE)}
-              className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow-sm transition-transform active:scale-90"
-              style={{ backgroundColor: brand.colors.primary }}
+              className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-90"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
               aria-label="Perfil"
             >
-              {brand.labels.appName.substring(0, 2).toUpperCase()}
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             </button>
           )}
         </div>

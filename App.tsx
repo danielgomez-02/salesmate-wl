@@ -1136,19 +1136,9 @@ const App: React.FC = () => {
       {/* ──────── DASHBOARD SCREEN ──────── */}
       {screen === AppScreen.DASHBOARD && (
         <div className="p-4 space-y-4 animate-fade-in">
-           <div className="flex justify-between items-end px-1">
-             <div className="flex-1 min-w-0 pr-4">
+           <div className="px-1">
                 <p className="text-[11px] font-bold uppercase tracking-widest truncate" style={{ color: brand.colors.primary }}>{brand.labels.routineLabel}</p>
                 <h2 className="text-2xl font-black italic tracking-tighter truncate">Mi Ruta</h2>
-             </div>
-             <div className="relative shrink-0">
-               <div className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-white shadow-sm" style={{ backgroundColor: brand.colors.primaryLight }}>
-                  <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=${brand.images.avatarBg}&color=${brand.images.avatarColor}`} className="w-full h-full object-cover" alt="User Avatar" />
-               </div>
-               {pendingSyncs > 0 && (
-                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">{pendingSyncs}</span>
-               )}
-             </div>
            </div>
 
            <div className="space-y-3">
