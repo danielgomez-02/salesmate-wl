@@ -15,17 +15,17 @@ const ProgressCircle: React.FC<{ current: number, total: number, label: string, 
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-1 bg-white p-1.5 rounded-xl border border-slate-50 shadow-sm w-full">
-      <div className="relative w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+    <div className="flex flex-col items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-100 w-full" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div className="relative w-11 h-11 sm:w-12 sm:h-12 shrink-0">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r={radius} stroke="#f1f5f9" strokeWidth="3" fill="transparent" />
-          <circle cx="28" cy="28" r={radius} stroke={color} strokeWidth="3" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
+          <circle cx="28" cy="28" r={radius} stroke="#e2e8f0" strokeWidth="3.5" fill="transparent" />
+          <circle cx="28" cy="28" r={radius} stroke={color} strokeWidth="3.5" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] sm:text-[11px] font-bold">{current}/{total}</span>
+          <span className="text-[11px] font-bold text-slate-800">{current}/{total}</span>
         </div>
       </div>
-      <span className="text-[5px] sm:text-[6px] font-bold uppercase text-slate-400 tracking-widest truncate w-full text-center">{label}</span>
+      <span className="text-[8px] font-semibold uppercase text-slate-500 tracking-wider truncate w-full text-center">{label}</span>
     </div>
   );
 };
@@ -686,7 +686,7 @@ const App: React.FC = () => {
       activation: brand.colors.categoryColors.activation,
     };
     const c = colorMap[cat] || '#64748b';
-    return { color: c, backgroundColor: `${c}15`, borderColor: `${c}30` };
+    return { color: c, backgroundColor: `${c}18`, border: `1.5px solid ${c}40` };
   };
 
   if (isLoading && screen === AppScreen.LOGIN && !user) {
@@ -1239,7 +1239,7 @@ const App: React.FC = () => {
            </div>
 
            <div className="space-y-3">
-             <h3 className="text-sm font-black italic px-1 tracking-tight">Tu progreso</h3>
+             <h3 className="text-sm font-bold text-slate-800 px-1 tracking-tight font-display">Tu progreso</h3>
              <div className="grid grid-cols-3 gap-2">
                {stats.map(s => <ProgressCircle key={s.label} {...s} />)}
              </div>
@@ -1277,12 +1277,13 @@ const App: React.FC = () => {
                   <div
                     key={m.taskid}
                     onClick={() => m.status === 'pending' && startMission(m)}
-                    className={`bg-white border rounded-xl p-4 transition-all relative overflow-hidden group
+                    className={`bg-white rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group
                       ${m.status === 'done'
-                        ? 'border-emerald-100 opacity-60 bg-emerald-50/20'
-                        : 'border-slate-50 shadow-lg cursor-pointer hover:shadow-xl active:scale-[0.98]'
+                        ? 'border border-emerald-200 opacity-60'
+                        : 'border border-slate-200/70 cursor-pointer active:scale-[0.98]'
                       }`
                     }
+                    style={m.status !== 'done' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.03)' } : {}}
                   >
                     <div className="flex gap-3 items-start mb-3">
                         <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 shadow-inner overflow-hidden border border-slate-100 relative">
@@ -1423,23 +1424,23 @@ const App: React.FC = () => {
                 if (selectedMission.type === 'offer_products') {
                   return (
                     <div className="flex flex-col min-h-full">
-                      <div className="flex flex-col items-center text-center px-4 pt-4 pb-4">
-                          <span className="text-white text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest mb-3 shadow-sm" style={{ backgroundColor: brand.colors.accent }}>
+                      <div className="flex flex-col items-center text-center px-5 pt-5 pb-4">
+                          <span className="text-white text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider mb-3" style={{ backgroundColor: brand.colors.categoryColors[selectedMission.category] || brand.colors.accent, boxShadow: `0 2px 8px ${brand.colors.categoryColors[selectedMission.category] || brand.colors.accent}30` }}>
                             {getCategoryLabel(selectedMission.category)}
                           </span>
-                          <h2 className="text-xl font-black text-slate-900 leading-tight mb-1 tracking-tight">{selectedMission.name}</h2>
-                          <p className="text-xs font-bold text-slate-400">Mostrar lista de SKUs sugeridos.</p>
+                          <h2 className="text-lg font-extrabold text-slate-900 leading-tight mb-1 tracking-tight font-display">{selectedMission.name}</h2>
+                          <p className="text-xs text-slate-400">Mostrar lista de SKUs sugeridos.</p>
                       </div>
 
-                      <div className="flex-1 px-3 space-y-2 pb-6">
+                      <div className="flex-1 px-4 space-y-2.5 pb-6">
                          {hasProducts ? selectedMission.suggested_products?.map((product) => (
-                             <div key={product.id} className="bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm">
-                                 <div className="w-14 h-16 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 p-1.5 relative overflow-hidden">
+                             <div key={product.id} className="bg-white rounded-2xl p-3.5 flex items-center gap-3 border border-slate-200/70" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                 <div className="w-14 h-16 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 p-1.5 relative overflow-hidden border border-slate-100">
                                      <ProductImage src={product.image} alt={product.name} className="w-full h-full object-contain" fallbackSrc={brand.images.fallbackProduct} primaryColor={brand.colors.primary} primaryLight={brand.colors.primaryLight} />
                                  </div>
                                  <div className="flex-1 min-w-0">
-                                     <h4 className="text-sm font-black text-slate-900 mb-0.5 leading-tight">{product.name}</h4>
-                                     <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: brand.colors.accent }}>
+                                     <h4 className="text-sm font-bold text-slate-900 mb-0.5 leading-tight">{product.name}</h4>
+                                     <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: brand.colors.categoryColors[selectedMission.category] || brand.colors.accent }}>
                                          SUGERENCIA: {product.suggested_qty} UDS
                                      </p>
                                  </div>
@@ -1463,38 +1464,39 @@ const App: React.FC = () => {
                           <h2 className="text-xl font-black italic tracking-tighter leading-tight break-words">{selectedMission.name}</h2>
                           <p className="text-xs text-slate-400 font-bold italic leading-snug break-words">{selectedMission.description}</p>
 
-                          <div className="space-y-3 pt-2">
+                          <div className="space-y-2.5 pt-2">
                              {selectedMission.instruction_steps?.map((step, idx) => (
-                                <p key={idx} className="text-sm font-bold text-slate-800 leading-tight p-3 bg-slate-50 rounded-2xl border border-slate-100 break-words shadow-sm">
-                                   {step}
-                                </p>
+                                <div key={idx} className="flex gap-3 items-start p-3.5 bg-white rounded-2xl border border-slate-200/80 break-words" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                   <span className="text-[11px] font-bold text-slate-400 mt-0.5 shrink-0">{idx + 1}.</span>
+                                   <p className="text-sm font-medium text-slate-700 leading-snug">{step}</p>
+                                </div>
                              ))}
                           </div>
                        </div>
 
                        {selectedMission.questionnaire && (
-                         <div className="bg-slate-50 p-4 rounded-[32px] border border-slate-100 space-y-4 shadow-sm">
-                            <p className="text-sm font-bold italic tracking-tight break-words">{selectedMission.questionnaire.question}</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 space-y-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                            <p className="text-sm font-bold text-slate-800 tracking-tight break-words">{selectedMission.questionnaire.question}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                {selectedMission.questionnaire.options.map(opt => (
                                   <button
                                     key={opt}
                                     onClick={() => setSurveyValue(opt)}
-                                    className={`p-3 rounded-2xl flex items-center justify-center gap-2 transition-all ${surveyValue !== opt ? 'bg-white border border-slate-200 text-slate-400' : 'text-white shadow-xl scale-105'}`}
-                                    style={surveyValue === opt ? { backgroundColor: brand.colors.primary } : {}}
+                                    className={`p-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${surveyValue !== opt ? 'bg-slate-50 border-2 border-slate-200 text-slate-600 hover:border-slate-300' : 'text-white shadow-lg scale-[1.02]'}`}
+                                    style={surveyValue === opt ? { backgroundColor: brand.colors.primary, borderColor: brand.colors.primary, borderWidth: '2px' } : {}}
                                   >
-                                     <span className="font-bold text-xs uppercase">{opt}</span>
+                                     <span className="font-bold text-xs uppercase tracking-wide">{opt}</span>
                                   </button>
                                ))}
                             </div>
                          </div>
                        )}
 
-                       <div className="bg-slate-50 p-4 rounded-[32px] border border-slate-100 text-center space-y-3 shadow-sm">
-                          <p className="text-[11px] font-bold uppercase text-slate-400 tracking-widest leading-relaxed break-words">¿Cómo calificarías la experiencia?</p>
-                          <div className="flex justify-center gap-3 flex-wrap">
+                       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 text-center space-y-3" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                          <p className="text-[11px] font-bold uppercase text-slate-500 tracking-widest leading-relaxed break-words">¿Cómo calificarías la experiencia?</p>
+                          <div className="flex justify-center gap-2 flex-wrap">
                              {[1,2,3,4,5].map(star => (
-                                <button key={star} onClick={() => setStarRating(star)} className="text-2xl transition-all active:scale-125" style={{ color: star <= starRating ? brand.colors.primary : '#e2e8f0' }}>★</button>
+                                <button key={star} onClick={() => setStarRating(star)} className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all duration-200 active:scale-110" style={{ color: star <= starRating ? brand.colors.primary : '#cbd5e1', backgroundColor: star <= starRating ? `${brand.colors.primary}12` : '#f8fafc' }}>★</button>
                              ))}
                           </div>
                        </div>
@@ -1699,12 +1701,12 @@ const App: React.FC = () => {
               })()}
            </div>
 
-           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-slate-50 flex gap-4 max-w-lg mx-auto z-[60] shadow-[0_-15px_35px_rgba(0,0,0,0.05)]">
+           <div className="fixed bottom-0 left-0 right-0 p-4 max-w-lg mx-auto z-[60]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.98) 70%, rgba(255,255,255,0))', paddingTop: '24px' }}>
               <button
                 onClick={completeMission}
                 disabled={isValidating || isVerifying || !isMissionReady}
-                className={`w-full py-3 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all break-words leading-none ${isValidating || isVerifying || !isMissionReady ? 'bg-slate-300 cursor-not-allowed' : 'active:scale-95 hover:brightness-110'}`}
-                style={!isValidating && !isVerifying && isMissionReady ? { backgroundColor: brand.colors.primary } : {}}
+                className={`w-full py-3.5 text-white text-[11px] font-bold uppercase tracking-[0.15em] rounded-xl transition-all duration-200 break-words leading-none ${isValidating || isVerifying || !isMissionReady ? 'bg-slate-300 cursor-not-allowed' : 'active:scale-[0.97]'}`}
+                style={!isValidating && !isVerifying && isMissionReady ? { backgroundColor: brand.colors.primary, boxShadow: `0 4px 14px ${brand.colors.primary}40` } : {}}
               >
                  {isValidating ? 'Validando...' : isVerifying ? 'Analizando foto...' : (selectedMission?.type === 'take_photo' && selectedMission?.verificationConfig && tempPhoto && !verificationResult) ? 'Verificar y completar' : 'Completar misión'}
               </button>
