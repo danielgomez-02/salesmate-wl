@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
 
   const isPreLogin = PRE_LOGIN_SCREENS.includes(activeScreen);
   const shouldHideBack = HIDE_BACK_SCREENS.includes(activeScreen);
+  const isDashboard = activeScreen === AppScreen.DASHBOARD;
 
   const isNavActive = (screen: AppScreen) =>
     activeScreen === screen || (screen === AppScreen.DASHBOARD && activeScreen === AppScreen.CUSTOMER_DETAIL);
@@ -28,17 +29,64 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
   return (
     <div className="flex flex-col min-h-screen max-w-lg mx-auto bg-white shadow-2xl relative border-x border-slate-100 overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 py-2.5 flex items-center border-b border-slate-100/60" role="banner">
-        {!shouldHideBack && (
-          <button
-            onClick={onBack || defaultBack}
-            aria-label="Volver atrás"
-            className="mr-3 text-slate-500 hover:text-slate-700 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          </button>
-        )}
-        <h1 className="text-sm font-bold uppercase tracking-wide text-slate-900 flex-1 truncate pr-2 font-display">{title}</h1>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100/60" role="banner"
+        style={{ minHeight: isDashboard ? '52px' : '44px' }}
+      >
+        <div className="flex items-center px-4" style={{ height: isDashboard ? '52px' : '44px' }}>
+          {/* Back button — hidden on dashboard & landing */}
+          {!shouldHideBack && (
+            <button
+              onClick={onBack || defaultBack}
+              aria-label="Volver atrás"
+              className="mr-3 text-slate-400 hover:text-slate-700 transition-colors shrink-0 w-9 h-9 flex items-center justify-center -ml-1.5 rounded-xl hover:bg-slate-50 active:scale-90"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            </button>
+          )}
+
+          {/* Dashboard: show logo or brand name */}
+          {isDashboard ? (
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              {brand.images.logo ? (
+                <img
+                  src={brand.images.logo}
+                  alt={brand.labels.appName}
+                  className="h-7 max-w-[120px] object-contain"
+                  style={{ imageRendering: 'auto' }}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: brand.colors.primary }}
+                  >
+                    {brand.labels.appName[0]}
+                  </div>
+                  <span className="text-sm font-bold text-slate-900 tracking-tight font-display">
+                    {brand.labels.appName}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Other screens: show title */
+            <h1 className="text-[13px] font-semibold uppercase tracking-wide text-slate-800 flex-1 truncate font-display">
+              {title}
+            </h1>
+          )}
+
+          {/* Right side: user avatar on dashboard */}
+          {isDashboard && (
+            <button
+              onClick={() => setScreen(AppScreen.PROFILE)}
+              className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shadow-sm transition-transform active:scale-90"
+              style={{ backgroundColor: brand.colors.primary }}
+              aria-label="Perfil"
+            >
+              {brand.labels.appName.substring(0, 2).toUpperCase()}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Content */}

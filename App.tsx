@@ -704,12 +704,15 @@ const App: React.FC = () => {
       setScreen={setScreen}
       onBack={handleBack}
       title={
-        screen === AppScreen.MISSION_EXECUTION ? "MISIÓN GUIADA" :
+        screen === AppScreen.MISSION_EXECUTION ? "Misión Guiada" :
         screen === AppScreen.CUSTOMER_DETAIL && selectedRoute ? selectedRoute.customer.name :
-        screen === AppScreen.LANDING ? "SALESMATE" :
-        screen === AppScreen.BRAND_SELECT ? "CONFIGURACIÓN" :
-        screen === AppScreen.BRAND_ADMIN ? "CONFIGURAR MARCA" :
-        `${brand.labels.appName.toUpperCase()} PRO`
+        screen === AppScreen.GOALS ? "Mis Metas" :
+        screen === AppScreen.PROFILE ? "Mi Perfil" :
+        screen === AppScreen.LANDING ? "Salesmate" :
+        screen === AppScreen.BRAND_SELECT ? "Configuración" :
+        screen === AppScreen.BRAND_ADMIN ? "Configurar Marca" :
+        screen === AppScreen.DASHBOARD ? brand.labels.appName :
+        brand.labels.routineLabel || `${brand.labels.missionSystem}`
       }
     >
       {/* ──────── PWA: Offline indicator ──────── */}
