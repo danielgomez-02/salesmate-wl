@@ -1135,40 +1135,54 @@ const App: React.FC = () => {
 
       {/* ──────── DASHBOARD SCREEN ──────── */}
       {screen === AppScreen.DASHBOARD && (
-        <div className="p-4 space-y-4 animate-fade-in">
-           <div className="px-1">
-                <p className="text-[11px] font-bold uppercase tracking-widest truncate" style={{ color: brand.colors.primary }}>{brand.labels.routineLabel}</p>
-                <h2 className="text-2xl font-black italic tracking-tighter truncate">Mi Ruta</h2>
+        <div className="animate-fade-in">
+           {/* Dashboard greeting section */}
+           <div className="px-5 pt-5 pb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.colors.primary }} />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">{brand.labels.routineLabel}</p>
+              </div>
+              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight font-display leading-tight">Mi Ruta</h2>
            </div>
 
-           <div className="space-y-3">
+           {/* Route cards */}
+           <div className="px-4 pb-4 space-y-2.5">
              {routes.length === 0 && (
-               <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
-                 <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                   <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+               <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
+                 <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                   <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
                  </div>
                  <p className="text-sm font-bold text-slate-500 mb-1">Sin rutas asignadas</p>
-                 <p className="text-[11px] font-bold text-slate-400">No hay visitas programadas para hoy.</p>
+                 <p className="text-[12px] text-slate-400">No hay visitas programadas para hoy.</p>
                </div>
              )}
              {routes.map(r => (
-               <div key={r.visit_id} onClick={() => selectCustomer(r)} className="bg-white p-4 rounded-[32px] border border-slate-100 shadow-md flex items-center gap-3 active:scale-95 transition-all cursor-pointer">
+               <div
+                 key={r.visit_id}
+                 onClick={() => selectCustomer(r)}
+                 className="bg-white p-4 rounded-2xl border border-slate-100/80 flex items-center gap-3.5 active:scale-[0.97] transition-all duration-200 cursor-pointer group"
+                 style={{
+                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
+                 }}
+               >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-inner shrink-0 text-white"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center font-extrabold shrink-0 text-white text-sm"
                     style={{ backgroundColor: r.status === 'completed' ? brand.colors.success : brand.colors.primary }}
                   >
-                     {r.status === 'completed' ? <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"/></svg> : r.route_order}
+                     {r.status === 'completed' ? (
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                     ) : r.route_order}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-base font-black text-slate-900 truncate tracking-tight">{r.customer.name}</h4>
-                    <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
-                       <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest truncate">{r.customer.segment}</span>
-                       <div className="w-1 h-1 rounded-full bg-slate-200 shrink-0"></div>
-                       <span className="text-[11px] font-bold uppercase truncate" style={{ color: brand.colors.primary }}>{r.customer.pos_id}</span>
+                    <h4 className="text-[15px] font-bold text-slate-900 truncate tracking-tight leading-snug">{r.customer.name}</h4>
+                    <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
+                       <span className="text-[11px] font-medium text-slate-400 truncate">{r.customer.segment}</span>
+                       <span className="text-slate-200">·</span>
+                       <span className="text-[11px] font-medium truncate" style={{ color: brand.colors.primary, opacity: 0.7 }}>{r.customer.pos_id}</span>
                     </div>
                   </div>
-                  <div className="text-slate-400 shrink-0">
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
+                  <div className="text-slate-300 shrink-0 group-hover:text-slate-400 transition-colors">
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                   </div>
                </div>
              ))}
