@@ -10,12 +10,12 @@
       "routineLabel": "Rutina RED",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂÃÂÃÂÃÂN",
-        "communication": "COMUNICACIÃÂÃÂÃÂÃÂN",
-        "activation": "ACTIVACIÃÂÃÂÃÂÃÂN"
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
       },
       "loginTitle": "Salesmate Pro",
-      "loginPlaceholder": "CÃÂÃÂÃÂÃÂ³digo de Empleado",
+      "loginPlaceholder": "Código de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
@@ -41,6 +41,48 @@
     "storagePrefix": "coke_gamified_v3_",
     "defaultEmpCode": "1234567"
   },
+  "bimbo": {
+    "id": "bimbo",
+    "labels": {
+      "appName": "Bimbo",
+      "appTagline": "Field Execution Hub",
+      "companyName": "Grupo Bimbo",
+      "missionSystem": "GOLD",
+      "pointsLabel": "Puntos GOLD",
+      "routineLabel": "Rutina GOLD",
+      "categories": {
+        "sales": "VENTAS",
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
+      },
+      "loginTitle": "Execution Hub",
+      "loginPlaceholder": "ID de Colaborador",
+      "loginButton": "Acceder"
+    },
+    "colors": {
+      "primary": "#0055A5",
+      "primaryLight": "#DBEAFE",
+      "primaryDark": "#1E40AF",
+      "accent": "#E8A317",
+      "accentLight": "#FEF3C7",
+      "success": "#059669",
+      "successLight": "#D1FAE5",
+      "categoryColors": {
+        "sales": "#6366f1",
+        "execution": "#ec4899",
+        "communication": "#14b8a6",
+        "activation": "#f97316"
+      }
+    },
+    "images": {
+      "fallbackProduct": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Bimbo_logo.svg/512px-Bimbo_logo.svg.png",
+      "avatarBg": "0055A5",
+      "avatarColor": "fff"
+    },
+    "storagePrefix": "bimbo_exec_v1_",
+    "defaultEmpCode": "9876543"
+  },
   "yalo": {
     "id": "yalo",
     "labels": {
@@ -52,9 +94,9 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂÃÂÃÂÃÂN",
-        "communication": "COMUNICACIÃÂÃÂÃÂÃÂN",
-        "activation": "ACTIVACIÃÂÃÂÃÂÃÂN"
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
@@ -94,12 +136,12 @@
       "routineLabel": "",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃN",
-        "communication": "COMUNICACIÃN",
-        "activation": "ACTIVACIÃN"
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
       },
       "loginTitle": "Salesmate",
-      "loginPlaceholder": "Codigo de Empleado",
+      "loginPlaceholder": "Código de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {

@@ -14,6 +14,21 @@ const REPO = 'danielgomez-02/salesmate-wl';
 const FILE_PATH = 'public/brands.json';
 const BRANCH = 'main';
 
+/** Decode base64 → UTF-8 string (atob only handles Latin-1) */
+function base64ToUtf8(base64) {
+  const raw = atob(base64);
+  const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/** Encode UTF-8 string → base64 */
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
 /** Fetch brands.json content + SHA from GitHub */
 async function fetchBrandsFile(token) {
   const res = await fetch(
@@ -28,7 +43,7 @@ async function fetchBrandsFile(token) {
   );
   if (!res.ok) throw new Error(`GitHub GET failed: ${res.status}`);
   const data = await res.json();
-  const content = JSON.parse(atob(data.content));
+  const content = JSON.parse(base64ToUtf8(data.content));
   return { content, sha: data.sha };
 }
 
@@ -46,7 +61,7 @@ async function writeBrandsFile(token, brands, sha, message) {
       },
       body: JSON.stringify({
         message,
-        content: btoa(unescape(encodeURIComponent(JSON.stringify(brands, null, 2) + '\n'))),
+        content: utf8ToBase64(JSON.stringify(brands, null, 2) + '\n'),
         sha,
         branch: BRANCH,
       }),
