@@ -212,6 +212,7 @@ const App: React.FC = () => {
   const [showAchievement, setShowAchievement] = useState(false);
 
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
+  const [routeFilter, setRouteFilter] = useState<string>('ALL');
   const [offerQty, setOfferQty] = useState(6);
   const [surveyValue, setSurveyValue] = useState<string | null>(null);
   const [starRating, setStarRating] = useState(0);
@@ -1189,16 +1190,91 @@ const App: React.FC = () => {
       )}
 
       {/* ──────── DASHBOARD SCREEN ──────── */}
-      {screen === AppScreen.DASHBOARD && (
+      {screen === AppScreen.DASHBOARD && (() => {
+        const completedCount = routes.filter(r => r.status === 'completed').length;
+        const inProgressCount = routes.filter(r => r.status === 'in_progress').length;
+        const pendingCount = routes.filter(r => r.status === 'pending').length;
+        const progressPct = routes.length > 0 ? Math.round((completedCount / routes.length) * 100) : 0;
+
+        const routeFilters = [
+          { key: 'ALL', label: t('dashboard.filterAll'), count: routes.length },
+          { key: 'in_progress', label: t('dashboard.filterInProgress'), count: inProgressCount },
+          { key: 'pending', label: t('dashboard.filterPending'), count: pendingCount },
+          { key: 'completed', label: t('dashboard.filterCompleted'), count: completedCount },
+        ];
+
+        const sortedRoutes = [...routes].sort((a, b) => {
+          const order: Record<string, number> = { in_progress: 0, pending: 1, completed: 2 };
+          return (order[a.status] ?? 1) - (order[b.status] ?? 1) || a.route_order - b.route_order;
+        });
+
+        const filteredRoutes = routeFilter === 'ALL' ? sortedRoutes : sortedRoutes.filter(r => r.status === routeFilter);
+
+        return (
         <div className="animate-fade-in">
-           {/* Dashboard greeting section */}
-           <div className="px-5 pt-5 pb-4">
+           {/* Dashboard greeting + progress */}
+           <div className="px-5 pt-5 pb-3">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.colors.primary }} />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">{brand.labels.routineLabel}</p>
               </div>
-              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight font-display leading-tight">{t('dashboard.myRoute')}</h2>
+              <div className="flex items-end justify-between mb-3">
+                <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight font-display leading-tight">{t('dashboard.myRoute')}</h2>
+                <span className="text-[12px] font-bold tabular-nums" style={{ color: brand.colors.primary }}>{completedCount}/{routes.length}</span>
+              </div>
+
+              {/* Progress bar */}
+              {routes.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${progressPct}%`,
+                        background: `linear-gradient(90deg, ${brand.colors.primary}, ${brand.colors.accent})`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                    <span>{progressPct}% {t('dashboard.completed')}</span>
+                    <div className="flex items-center gap-3">
+                      {inProgressCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                          {inProgressCount} {t('dashboard.active')}
+                        </span>
+                      )}
+                      {pendingCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                          {pendingCount} {t('dashboard.pending')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
            </div>
+
+           {/* Route filter tabs */}
+           {routes.length > 0 && (
+             <div className="px-4 pb-3">
+               <div className="flex gap-1.5 bg-slate-100/60 p-1 rounded-full overflow-x-auto no-scrollbar border border-slate-50 shrink-0">
+                 {routeFilters.map(f => (
+                   <button
+                     key={f.key}
+                     onClick={() => setRouteFilter(f.key)}
+                     className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${routeFilter === f.key ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400'}`}
+                   >
+                     {f.label}
+                     <span className={`text-[9px] font-black tabular-nums px-1.5 py-0.5 rounded-full ${routeFilter === f.key ? 'text-white' : 'bg-slate-200/80 text-slate-500'}`}
+                       style={routeFilter === f.key ? { backgroundColor: brand.colors.primary } : {}}
+                     >{f.count}</span>
+                   </button>
+                 ))}
+               </div>
+             </div>
+           )}
 
            {/* Route cards */}
            <div className="px-4 pb-4 space-y-2.5">
@@ -1211,39 +1287,93 @@ const App: React.FC = () => {
                  <p className="text-[12px] text-slate-400">{t('dashboard.noRoutesDesc')}</p>
                </div>
              )}
-             {routes.map(r => (
+             {filteredRoutes.length === 0 && routes.length > 0 && (
+               <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+                 <p className="text-sm font-bold text-slate-400">{t('dashboard.noRoutesFilter')}</p>
+               </div>
+             )}
+             {filteredRoutes.map(r => {
+               const isInProgress = r.status === 'in_progress';
+               const isCompleted = r.status === 'completed';
+               return (
                <div
                  key={r.visit_id}
                  onClick={() => selectCustomer(r)}
-                 className="bg-white p-4 rounded-2xl border border-slate-100/80 flex items-center gap-3.5 active:scale-[0.97] transition-all duration-200 cursor-pointer group"
+                 className={`relative p-4 rounded-2xl flex items-center gap-3.5 active:scale-[0.97] transition-all duration-200 cursor-pointer group
+                   ${isCompleted
+                     ? 'bg-emerald-50/50 border border-emerald-200/60'
+                     : isInProgress
+                       ? 'bg-white border-2'
+                       : 'bg-white border border-slate-100/80'
+                   }`}
                  style={{
-                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
+                   boxShadow: isInProgress
+                     ? `0 2px 12px ${brand.colors.primary}18, 0 0 0 0px ${brand.colors.primary}30`
+                     : '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
+                   borderColor: isInProgress ? `${brand.colors.primary}50` : undefined,
                  }}
                >
+                  {/* Left status indicator line for in_progress */}
+                  {isInProgress && (
+                    <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full" style={{ backgroundColor: brand.colors.primary }} />
+                  )}
+
+                  {/* Avatar / status icon */}
                   <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center font-extrabold shrink-0 text-white text-sm"
-                    style={{ backgroundColor: r.status === 'completed' ? brand.colors.success : brand.colors.primary }}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-extrabold shrink-0 text-sm transition-all
+                      ${isCompleted ? 'text-white' : isInProgress ? 'text-white' : 'text-white'}`}
+                    style={{
+                      backgroundColor: isCompleted
+                        ? brand.colors.success
+                        : isInProgress
+                          ? brand.colors.primary
+                          : `${brand.colors.primary}30`,
+                      color: isCompleted || isInProgress ? '#fff' : brand.colors.primary,
+                    }}
                   >
-                     {r.status === 'completed' ? (
+                     {isCompleted ? (
                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                     ) : r.route_order}
+                     ) : isInProgress ? (
+                       <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9.172 15.828a4 4 0 010-5.656m5.656 0a4 4 0 010 5.656M12 12h.008v.008H12V12z"/></svg>
+                     ) : (
+                       <span className="font-black text-[13px]">{r.route_order}</span>
+                     )}
                   </div>
+
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[15px] font-bold text-slate-900 truncate tracking-tight leading-snug">{r.customer.name}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className={`text-[15px] font-bold truncate tracking-tight leading-snug ${isCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-900'}`}>{r.customer.name}</h4>
+                    </div>
                     <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
                        <span className="text-[11px] font-medium text-slate-400 truncate">{r.customer.segment}</span>
                        <span className="text-slate-200">·</span>
                        <span className="text-[11px] font-medium truncate" style={{ color: brand.colors.primary, opacity: 0.7 }}>{r.customer.pos_id}</span>
                     </div>
                   </div>
-                  <div className="text-slate-300 shrink-0 group-hover:text-slate-400 transition-colors">
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+
+                  {/* Right side: status badge + chevron */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isInProgress && (
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full text-white" style={{ backgroundColor: brand.colors.primary }}>
+                        {t('dashboard.statusActive')}
+                      </span>
+                    )}
+                    {isCompleted && (
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full text-emerald-700 bg-emerald-100">
+                        {t('dashboard.statusDone')}
+                      </span>
+                    )}
+                    <div className={`transition-colors ${isCompleted ? 'text-emerald-300' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                    </div>
                   </div>
                </div>
-             ))}
+               );
+             })}
            </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ──────── CUSTOMER DETAIL SCREEN ──────── */}
       {screen === AppScreen.CUSTOMER_DETAIL && selectedRoute && (
