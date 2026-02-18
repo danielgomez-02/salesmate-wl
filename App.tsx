@@ -388,6 +388,29 @@ const App: React.FC = () => {
   const storageKey = (visitId: number) =>
     `${brand.storagePrefix}${user?.emp_code || 'anon'}_${visitId}`;
 
+  // Reconcile route statuses with localStorage mission progress on load
+  useEffect(() => {
+    if (routes.length === 0 || !user) return;
+    let changed = false;
+    const updated = routes.map(r => {
+      const stored = localStorage.getItem(storageKey(r.visit_id));
+      if (!stored) return r;
+      try {
+        const savedMissions: Mission[] = JSON.parse(stored);
+        const doneCount = savedMissions.filter(m => m.status === 'done').length;
+        if (doneCount === savedMissions.length && savedMissions.length > 0 && r.status !== 'completed') {
+          changed = true;
+          return { ...r, status: 'completed' as const };
+        } else if (doneCount > 0 && r.status === 'pending') {
+          changed = true;
+          return { ...r, status: 'in_progress' as const };
+        }
+      } catch { /* invalid JSON, skip */ }
+      return r;
+    });
+    if (changed) setRoutes(updated);
+  }, [routes.length, user]); // Only run when routes first load or user changes
+
   const selectCustomer = async (route: RouteItem) => {
     setSelectedRoute(route);
     setIsLoading(true);
@@ -492,9 +515,12 @@ const App: React.FC = () => {
         setMissions(updated);
         localStorage.setItem(storageKey(selectedRoute.visit_id), JSON.stringify(updated));
 
-        const allDone = updated.every(m => m.status === 'done');
+        const doneCount = updated.filter(m => m.status === 'done').length;
+        const allDone = doneCount === updated.length;
         if (allDone) {
           setRoutes(prev => prev.map(r => r.visit_id === selectedRoute.visit_id ? { ...r, status: 'completed' as const } : r));
+        } else if (doneCount > 0) {
+          setRoutes(prev => prev.map(r => r.visit_id === selectedRoute.visit_id ? { ...r, status: 'in_progress' as const } : r));
         }
 
         setIsValidating(false);
