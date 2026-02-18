@@ -177,13 +177,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
               aria-current={isNavActive(AppScreen.DASHBOARD) ? 'page' : undefined}
               className="relative flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] transition-all duration-200"
             >
-              {/* Active indicator pill */}
-              {isNavActive(AppScreen.DASHBOARD) && (
-                <div
-                  className="absolute -top-0.5 w-12 h-1 rounded-full"
-                  style={{ backgroundColor: brand.colors.primary }}
-                />
-              )}
               <div
                 className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
                 style={{
@@ -217,12 +210,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
               aria-current={isNavActive(AppScreen.PROFILE) ? 'page' : undefined}
               className="relative flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] transition-all duration-200"
             >
-              {isNavActive(AppScreen.PROFILE) && (
-                <div
-                  className="absolute -top-0.5 w-12 h-1 rounded-full"
-                  style={{ backgroundColor: brand.colors.primary }}
-                />
-              )}
               <div
                 className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
                 style={{
