@@ -169,7 +169,7 @@ const ProductImage: React.FC<{
 };
 
 const App: React.FC = () => {
-  const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath } = useBrand();
+  const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath, loading } = useBrand();
   const { t, lang } = useLanguage();
   const getCategoryLabel = (cat: string) => {
     return brand.labels.categories[cat as MissionCategory] || cat.toUpperCase();
@@ -179,8 +179,24 @@ const App: React.FC = () => {
   const [screen, setScreen] = useState<AppScreen>(() => {
     if (initialPath === 'config') return AppScreen.BRAND_SELECT;
     if (initialPath && brands[initialPath]) return AppScreen.LOGIN;
+    // If there's a path segment but brand not found yet, start at LANDING
+    // (will be re-evaluated when brands finish loading)
     return AppScreen.LANDING;
   });
+
+  // Re-evaluate screen when brands finish loading (handles async brand resolution)
+  const [hasResolvedRoute, setHasResolvedRoute] = useState(false);
+  useEffect(() => {
+    if (!loading && !hasResolvedRoute && initialPath && initialPath !== 'config') {
+      setHasResolvedRoute(true);
+      if (brands[initialPath]) {
+        // Brand found after load — navigate to login
+        setBrandId(initialPath);
+        setScreen(AppScreen.LOGIN);
+      }
+      // If brand still not found after load, stay on LANDING
+    }
+  }, [loading, brands, initialPath, hasResolvedRoute, setBrandId]);
 
   // Brand admin form state
   const [editingBrand, setEditingBrand] = useState<BrandConfig | null>(null);
@@ -241,12 +257,15 @@ const App: React.FC = () => {
   }, []);
 
   // Apply dynamic manifest whenever brand changes
+  // Only update title/manifest when brand actually matches brandId (not fallback)
   useEffect(() => {
-    if (brandId && brand) {
+    if (brandId && brand && brands[brandId]) {
       applyDynamicManifest(brand, brandId);
       document.title = `${brand.labels.appName} — ${brand.labels.companyName}`;
+    } else {
+      document.title = 'Salesmate — Whitelabel Platform';
     }
-  }, [brand, brandId]);
+  }, [brand, brandId, brands]);
 
   // ── PWA: Online/offline detection + sync ──
   useEffect(() => {

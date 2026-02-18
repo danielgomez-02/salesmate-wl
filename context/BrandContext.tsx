@@ -102,7 +102,13 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [brandId, _setBrandId] = useState<string>(() => {
     const segment = getPathSegment();
     const merged = { ...defaultBrands, ...loadCustomBrands() };
+
+    // If URL has a brand segment that exists, use it
     if (segment && segment !== 'config' && merged[segment]) return segment;
+
+    // If URL has a brand segment that does NOT exist yet, still keep it as brandId
+    // so we can resolve it after brands.json loads
+    if (segment && segment !== 'config' && segment !== '') return segment;
 
     const params = new URLSearchParams(window.location.search);
     const urlBrand = params.get('brand');
@@ -129,14 +135,23 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const brandKeys = useMemo(() => Object.keys(allBrands), [allBrands]);
-  const brand = useMemo(() => allBrands[brandId] || allBrands[DEFAULT_BRAND] || Object.values(allBrands)[0], [allBrands, brandId]);
+
+  // Resolve brand: if brandId exists in allBrands use it, otherwise fallback
+  const brand = useMemo(() => {
+    if (allBrands[brandId]) return allBrands[brandId];
+    // brandId from URL doesn't match any known brand — use a neutral fallback
+    return allBrands[DEFAULT_BRAND] || Object.values(allBrands)[0];
+  }, [allBrands, brandId]);
+
+  // Track whether the current brandId actually resolves to a real brand
+  const brandExists = useMemo(() => !!allBrands[brandId], [allBrands, brandId]);
 
   useEffect(() => {
-    if (brand) {
+    if (brand && brandExists) {
       applyBrandCSS(brand);
       localStorage.setItem(STORAGE_KEY_BRAND, brandId);
     }
-  }, [brand, brandId]);
+  }, [brand, brandId, brandExists]);
 
   const setBrandId = useCallback((id: string) => _setBrandId(id), []);
 
