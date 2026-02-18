@@ -552,6 +552,17 @@ const App: React.FC = () => {
       setScreen(AppScreen.CUSTOMER_DETAIL);
     } else if (screen === AppScreen.CUSTOMER_DETAIL) {
       setScreen(AppScreen.DASHBOARD);
+    } else if (screen === AppScreen.PROFILE || screen === AppScreen.GOALS) {
+      setScreen(AppScreen.DASHBOARD);
+    } else if (screen === AppScreen.BRAND_ADMIN) {
+      window.history.pushState({}, '', '/config');
+      setScreen(AppScreen.BRAND_SELECT);
+    } else if (screen === AppScreen.LOGIN) {
+      window.history.pushState({}, '', '/config');
+      setScreen(AppScreen.BRAND_SELECT);
+    } else if (screen === AppScreen.BRAND_SELECT) {
+      window.history.pushState({}, '', '/');
+      setScreen(AppScreen.LANDING);
     } else {
       setScreen(AppScreen.DASHBOARD);
     }
@@ -911,7 +922,7 @@ const App: React.FC = () => {
       {/* ──────── BRAND ADMIN SCREEN ──────── */}
       {screen === AppScreen.BRAND_ADMIN && (() => {
         const isNew = editingBrand === null;
-        const draft: BrandConfig = editingBrand || createBlankBrand('nueva-marca');
+        const draft: BrandConfig = editingBrand || createBlankBrand(adminSlug || 'nueva-marca');
 
         const updateDraft = (path: string, value: string) => {
           const clone: any = JSON.parse(JSON.stringify(draft));
@@ -1017,9 +1028,16 @@ const App: React.FC = () => {
                 onClick={() => {
                   const id = isNew ? adminSlug : draft.id;
                   if (!id || id.length < 2) { alert(t('brandAdmin.slugError')); return; }
-                  saveBrand(id, { ...draft, id });
+                  const finalDraft = { ...draft, id };
+                  // If storagePrefix still uses placeholder, update to real slug
+                  if (isNew && finalDraft.storagePrefix === 'nueva-marca_sm_v1_') {
+                    finalDraft.storagePrefix = `${id}_sm_v1_`;
+                  }
+                  saveBrand(id, finalDraft);
                   setEditingBrand(null);
                   setAdminSlug('');
+                  setBrandId(id);
+                  pushBrandPath(id);
                   setScreen(AppScreen.BRAND_SELECT);
                 }}
                 className="w-full text-white font-black py-3 rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all"
