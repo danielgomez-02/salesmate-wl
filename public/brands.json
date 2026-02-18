@@ -168,5 +168,48 @@
     },
     "storagePrefix": "pepsico_sm_v1_",
     "defaultEmpCode": "5543767891"
+  },
+  "lala": {
+    "id": "lala",
+    "labels": {
+      "appName": "Lala",
+      "appTagline": "Salesmate Platform",
+      "companyName": "Lala",
+      "missionSystem": "RUTA",
+      "pointsLabel": "Puntos PRO",
+      "routineLabel": "Rutina PRO",
+      "categories": {
+        "sales": "VENTAS",
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
+      },
+      "loginTitle": "Salesmate",
+      "loginPlaceholder": "Código de Empleado",
+      "loginButton": "Ingresar"
+    },
+    "colors": {
+      "primary": "#27418f",
+      "primaryLight": "#EEF2FF",
+      "primaryDark": "#182757",
+      "accent": "#06B6D4",
+      "accentLight": "#CFFAFE",
+      "success": "#10B981",
+      "successLight": "#D1FAE5",
+      "categoryColors": {
+        "sales": "#38bdf8",
+        "execution": "#a855f7",
+        "communication": "#2dd4bf",
+        "activation": "#f59e0b"
+      }
+    },
+    "images": {
+      "fallbackProduct": "https://ui-avatars.com/api/?name=P&background=6366F1&color=fff&size=256",
+      "avatarBg": "6366F1",
+      "avatarColor": "fff",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/9/99/Logo_de_Grupo_Lala.svg"
+    },
+    "storagePrefix": "lala_sm_v1_",
+    "defaultEmpCode": "1234567"
   }
 }
