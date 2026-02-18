@@ -10,12 +10,12 @@
       "routineLabel": "Rutina RED",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂÃÂN",
-        "communication": "COMUNICACIÃÂÃÂN",
-        "activation": "ACTIVACIÃÂÃÂN"
+        "execution": "EJECUCIÃÂÃÂÃÂÃÂN",
+        "communication": "COMUNICACIÃÂÃÂÃÂÃÂN",
+        "activation": "ACTIVACIÃÂÃÂÃÂÃÂN"
       },
       "loginTitle": "Salesmate Pro",
-      "loginPlaceholder": "CÃÂÃÂ³digo de Empleado",
+      "loginPlaceholder": "CÃÂÃÂÃÂÃÂ³digo de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
@@ -52,9 +52,9 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂÃÂN",
-        "communication": "COMUNICACIÃÂÃÂN",
-        "activation": "ACTIVACIÃÂÃÂN"
+        "execution": "EJECUCIÃÂÃÂÃÂÃÂN",
+        "communication": "COMUNICACIÃÂÃÂÃÂÃÂN",
+        "activation": "ACTIVACIÃÂÃÂÃÂÃÂN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
@@ -99,7 +99,7 @@
         "activation": "ACTIVACIÃN"
       },
       "loginTitle": "Salesmate",
-      "loginPlaceholder": "CÃ³digo de Empleado",
+      "loginPlaceholder": "Codigo de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
@@ -121,7 +121,7 @@
       "fallbackProduct": "https://ui-avatars.com/api/?name=P&background=6366F1&color=fff&size=256",
       "avatarBg": "03355a",
       "avatarColor": "fff",
-      "logo": "https://1000logos.net/wp-content/uploads/2025/10/PepsiCo-NEW-Logo.png"
+      "logo": "https://nuffoodsspectrum.asia/wp-content/uploads/2025/10/PepsiCo-Logo-header.webp"
     },
     "storagePrefix": "pepsico_sm_v1_",
     "defaultEmpCode": "5543767891"
