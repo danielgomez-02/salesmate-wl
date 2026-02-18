@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppScreen } from '../types';
 import { useBrand } from '../context/BrandContext';
+import { useLanguage } from '../i18n';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ const HIDE_BACK_SCREENS = [AppScreen.LANDING, AppScreen.DASHBOARD];
 
 const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, title, showNav = true, onBack }) => {
   const { brand } = useBrand();
+  const { t } = useLanguage();
   const defaultBack = () => setScreen(AppScreen.DASHBOARD);
   const [scrolled, setScrolled] = useState(false);
 
@@ -100,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
                   onClick={() => setScreen(AppScreen.PROFILE)}
                   className="relative shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-90 hover:bg-white/15"
                   style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
-                  aria-label="Perfil"
+                  aria-label={t('nav.profileAriaLabel')}
                 >
                   <svg className="w-[18px] h-[18px] text-white/90" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -126,7 +128,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
               {!shouldHideBack && (
                 <button
                   onClick={onBack || defaultBack}
-                  aria-label="Volver atrás"
+                  aria-label={t('nav.back')}
                   className="shrink-0 w-9 h-9 flex items-center justify-center -ml-1 rounded-xl transition-all duration-200 active:scale-90 hover:bg-slate-100"
                   style={{ color: brand.colors.primary }}
                 >
@@ -158,7 +160,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
         <nav
           className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto z-50"
           role="navigation"
-          aria-label="Navegación principal"
+          aria-label={t('nav.main')}
           style={{
             background: 'rgba(255,255,255,0.88)',
             backdropFilter: 'blur(24px) saturate(180%)',
@@ -171,7 +173,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
             {/* Route / Mission tab */}
             <button
               onClick={() => setScreen(AppScreen.DASHBOARD)}
-              aria-label={`Ir a ${brand.labels.missionSystem}`}
+              aria-label={`${t('nav.goTo')} ${brand.labels.missionSystem}`}
               aria-current={isNavActive(AppScreen.DASHBOARD) ? 'page' : undefined}
               className="relative flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] transition-all duration-200"
             >
@@ -211,7 +213,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
             {/* Profile tab */}
             <button
               onClick={() => setScreen(AppScreen.PROFILE)}
-              aria-label="Ir a Perfil"
+              aria-label={t('nav.goToProfile')}
               aria-current={isNavActive(AppScreen.PROFILE) ? 'page' : undefined}
               className="relative flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] transition-all duration-200"
             >
@@ -243,7 +245,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeScreen, setScreen, titl
                 className="text-[10px] font-semibold tracking-tight transition-colors duration-200"
                 style={{ color: isNavActive(AppScreen.PROFILE) ? brand.colors.primary : '#94a3b8' }}
               >
-                Perfil
+                {t('nav.profile')}
               </span>
             </button>
           </div>

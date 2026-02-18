@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import { useBrand, createBlankBrand } from './context/BrandContext';
 import { offlineDb } from './services/offlineDb';
 import { applyDynamicManifest, initInstallPrompt, canInstall, promptInstall } from './pwa/dynamicManifest';
+import { LanguageContext, useLanguage, getLanguageFromURL } from './i18n';
 
 const ProgressCircle: React.FC<{ current: number, total: number, label: string, color: string }> = ({ current, total, label, color }) => {
   const percentage = total === 0 ? 0 : (current / total) * 100;
@@ -41,7 +42,8 @@ const AchievementOverlay: React.FC<{
   accentColor: string;
   avatarBg: string;
   avatarColor: string;
-}> = ({ completedCount, totalCount, onNext, nextMission, currentMission, getCategoryLabel, primaryColor, accentColor, avatarBg, avatarColor }) => (
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}> = ({ completedCount, totalCount, onNext, nextMission, currentMission, getCategoryLabel, primaryColor, accentColor, avatarBg, avatarColor, t }) => (
   <div className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-sm flex flex-col p-4 animate-fade-in overflow-y-auto no-scrollbar max-w-lg mx-auto left-0 right-0 shadow-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.98)' }}>
     <div className="flex justify-end mb-1">
       <button onClick={onNext} className="text-slate-400 p-1.5 active:scale-90 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors">
@@ -65,7 +67,7 @@ const AchievementOverlay: React.FC<{
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center pt-0.5">
             <span className="text-xl font-black text-slate-900">{completedCount}/{totalCount}</span>
-            <span className="text-[6px] font-bold uppercase tracking-widest" style={{ color: primaryColor }}>Tareas</span>
+            <span className="text-[6px] font-bold uppercase tracking-widest" style={{ color: primaryColor }}>{t('achievement.tasks')}</span>
           </div>
         </div>
       </div>
@@ -73,7 +75,7 @@ const AchievementOverlay: React.FC<{
       {currentMission && (
         <div className="mb-6 space-y-1 w-full max-w-xs">
           <h2 className="text-2xl font-black text-slate-900 leading-tight uppercase tracking-tight break-words">{currentMission.name}</h2>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">¡Misión completada!</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('achievement.missionComplete')}</p>
         </div>
       )}
 
@@ -81,13 +83,13 @@ const AchievementOverlay: React.FC<{
         <img src={`https://ui-avatars.com/api/?name=Star&background=${avatarBg}&color=${avatarColor}&size=512`} className="w-full h-full object-cover opacity-90" alt="Success Avatar" />
       </div>
 
-      <p className="text-slate-500 font-bold text-sm px-4 tracking-tight italic max-w-xs">"¡Buen trabajo! Sigamos ganando en el mercado."</p>
+      <p className="text-slate-500 font-bold text-sm px-4 tracking-tight italic max-w-xs">{t('achievement.goodJob')}</p>
     </div>
 
     {nextMission ? (
         <div className="mt-auto w-full animate-slide-up pb-4">
             <div className="flex flex-col items-center gap-1 mb-2 animate-bounce-slow">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Siguiente Misión</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('achievement.nextMission')}</span>
                 <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
             </div>
 
@@ -103,7 +105,7 @@ const AchievementOverlay: React.FC<{
                         <h4 className="text-sm font-black text-slate-900 truncate leading-tight">{nextMission.name}</h4>
                     </div>
                     <button onClick={onNext} className="text-white text-[11px] font-bold px-4 py-2 rounded-full uppercase shadow-md active:scale-95 whitespace-nowrap transition-colors" style={{ backgroundColor: primaryColor }}>
-                        Iniciar
+                        {t('achievement.start')}
                     </button>
                  </div>
             </div>
@@ -111,7 +113,7 @@ const AchievementOverlay: React.FC<{
     ) : (
       <div className="mt-auto w-full pb-4">
         <button onClick={onNext} className="w-full text-white font-black py-4 rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all" style={{ backgroundColor: primaryColor }}>
-          Continuar
+          {t('achievement.continue')}
         </button>
       </div>
     )}
@@ -168,6 +170,7 @@ const ProductImage: React.FC<{
 
 const App: React.FC = () => {
   const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath } = useBrand();
+  const { t, lang } = useLanguage();
   const getCategoryLabel = (cat: string) => {
     return brand.labels.categories[cat as MissionCategory] || cat.toUpperCase();
   };
@@ -672,7 +675,7 @@ const App: React.FC = () => {
   // ProductImage moved to module scope (see above App component) — PERF-003 FIX
 
   const filters = [
-    { key: 'ALL', label: 'TODAS' },
+    { key: 'ALL', label: t('customer.allFilter') },
     { key: 'SALES', label: brand.labels.categories.sales },
     { key: 'EXECUTION', label: brand.labels.categories.execution },
     { key: 'COMMUNICATION', label: brand.labels.categories.communication }
@@ -693,7 +696,7 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white">
            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: brand.colors.primaryLight, borderTopColor: brand.colors.primary }}></div>
-           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Cargando perfil...</p>
+           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">{t('loading.profile')}</p>
         </div>
     )
   }
@@ -704,13 +707,13 @@ const App: React.FC = () => {
       setScreen={setScreen}
       onBack={handleBack}
       title={
-        screen === AppScreen.MISSION_EXECUTION ? "Misión Guiada" :
+        screen === AppScreen.MISSION_EXECUTION ? t('screen.guidedMission') :
         screen === AppScreen.CUSTOMER_DETAIL && selectedRoute ? selectedRoute.customer.name :
-        screen === AppScreen.GOALS ? "Mis Metas" :
-        screen === AppScreen.PROFILE ? "Mi Perfil" :
+        screen === AppScreen.GOALS ? t('screen.myGoals') :
+        screen === AppScreen.PROFILE ? t('screen.myProfile') :
         screen === AppScreen.LANDING ? "Salesmate" :
-        screen === AppScreen.BRAND_SELECT ? "Configuración" :
-        screen === AppScreen.BRAND_ADMIN ? "Configurar Marca" :
+        screen === AppScreen.BRAND_SELECT ? t('screen.config') :
+        screen === AppScreen.BRAND_ADMIN ? t('screen.configureBrand') :
         screen === AppScreen.DASHBOARD ? brand.labels.appName :
         brand.labels.routineLabel || `${brand.labels.missionSystem}`
       }
@@ -719,8 +722,8 @@ const App: React.FC = () => {
       {!isOnline && (
         <div className="sticky top-0 z-50 flex items-center justify-center gap-2 py-2 px-4 text-white text-xs font-bold uppercase tracking-widest bg-amber-500 shadow-md animate-fade-in">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18.364 5.636a9 9 0 010 12.728M5.636 18.364a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072M15.536 8.464a5 5 0 010 7.072" /></svg>
-          Modo Offline
-          {pendingSyncs > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">{pendingSyncs} pendiente{pendingSyncs > 1 ? 's' : ''}</span>}
+          {t('offline.mode')}
+          {pendingSyncs > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">{pendingSyncs} {pendingSyncs > 1 ? t('offline.pendingPlural') : t('offline.pending')}</span>}
         </div>
       )}
 
@@ -741,6 +744,7 @@ const App: React.FC = () => {
           accentColor={brand.colors.accent}
           avatarBg={brand.images.avatarBg}
           avatarColor={brand.images.avatarColor}
+          t={t}
         />
       )}
 
@@ -764,12 +768,12 @@ const App: React.FC = () => {
               }}
               className="w-full py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all hover:shadow-2xl"
             >
-              Configurar Marcas
+              {t('landing.configureBrands')}
             </button>
 
             {brandKeys.length > 0 && (
               <div className="pt-4 border-t border-slate-100 mt-6">
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center mb-3">Acceso directo</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center mb-3">{t('landing.directAccess')}</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {brandKeys.map(key => {
                     const b = brands[key];
@@ -805,12 +809,12 @@ const App: React.FC = () => {
           <div className="mb-10 text-center">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5em] mb-3">Powered by Yalo</p>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Salesmate</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Configuración de Marcas</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">{t('brandSelect.title')}</p>
           </div>
 
           <div className="w-full space-y-3 max-w-sm">
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Selecciona una marca</p>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('brandSelect.subtitle')}</p>
               <button
                 onClick={() => {
                   setEditingBrand(null);
@@ -818,7 +822,7 @@ const App: React.FC = () => {
                   setScreen(AppScreen.BRAND_ADMIN);
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors active:scale-90"
-                title="Crear nueva marca"
+                title={t('brandSelect.createNew')}
               >
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
               </button>
@@ -866,7 +870,7 @@ const App: React.FC = () => {
                         setScreen(AppScreen.BRAND_ADMIN);
                       }}
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors active:scale-90"
-                      title="Editar marca"
+                      title={t('brandSelect.editBrand')}
                     >
                       <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
@@ -874,12 +878,12 @@ const App: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`¿Eliminar la marca "${b.labels.appName}"? Esta acción no se puede deshacer.`)) {
+                        if (confirm(t('brandSelect.deleteConfirm', { name: b.labels.appName }))) {
                           deleteBrand(key);
                         }
                       }}
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-red-50 transition-colors active:scale-90"
-                      title="Eliminar marca"
+                      title={t('brandSelect.deleteBrand')}
                     >
                       <svg className="w-4 h-4 text-slate-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
@@ -921,7 +925,7 @@ const App: React.FC = () => {
         return (
           <div className="p-4 space-y-4 animate-fade-in overflow-y-auto pb-24">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{isNew ? 'Nueva Marca' : `Editar: ${draft.labels.appName}`}</h2>
+              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{isNew ? t('brandAdmin.newBrand') : `${t('brandAdmin.editPrefix')}: ${draft.labels.appName}`}</h2>
               <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-90">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
@@ -946,64 +950,64 @@ const App: React.FC = () => {
             {/* Slug / Ruta */}
             {isNew && (
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">Slug / Ruta URL</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">{t('brandAdmin.slugLabel')}</label>
                 <div className="flex items-center bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
                   <span className="text-[10px] text-slate-400 font-mono pl-3">/</span>
-                  <input type="text" value={adminSlug} onChange={e => setAdminSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="mi-marca" className="flex-1 text-xs bg-transparent px-1 py-2 font-mono font-medium outline-none" />
+                  <input type="text" value={adminSlug} onChange={e => setAdminSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder={t('brandAdmin.slugPlaceholder')} className="flex-1 text-xs bg-transparent px-1 py-2 font-mono font-medium outline-none" />
                 </div>
               </div>
             )}
 
             {/* Section: Info básica */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Información</p>
-              <AdminTextInput label="Nombre de la App" value={draft.labels.appName} onChange={v => updateDraft('labels.appName', v)} />
-              <AdminTextInput label="Empresa" value={draft.labels.companyName} onChange={v => updateDraft('labels.companyName', v)} />
-              <AdminTextInput label="Tagline" value={draft.labels.appTagline} onChange={v => updateDraft('labels.appTagline', v)} />
-              <AdminTextInput label="Sistema de Misiones" value={draft.labels.missionSystem} onChange={v => updateDraft('labels.missionSystem', v)} placeholder="RED, GOLD, CORE..." />
-              <AdminTextInput label="Puntos Label" value={draft.labels.pointsLabel} onChange={v => updateDraft('labels.pointsLabel', v)} />
-              <AdminTextInput label="Rutina Label" value={draft.labels.routineLabel} onChange={v => updateDraft('labels.routineLabel', v)} />
-              <AdminTextInput label="Storage Prefix" value={draft.storagePrefix} onChange={v => updateDraft('storagePrefix', v)} placeholder="mi_marca_v1_" />
-              <AdminTextInput label="Código Empleado Default" value={draft.defaultEmpCode} onChange={v => updateDraft('defaultEmpCode', v)} />
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.infoSection')}</p>
+              <AdminTextInput label={t('brandAdmin.appName')} value={draft.labels.appName} onChange={v => updateDraft('labels.appName', v)} />
+              <AdminTextInput label={t('brandAdmin.company')} value={draft.labels.companyName} onChange={v => updateDraft('labels.companyName', v)} />
+              <AdminTextInput label={t('brandAdmin.tagline')} value={draft.labels.appTagline} onChange={v => updateDraft('labels.appTagline', v)} />
+              <AdminTextInput label={t('brandAdmin.missionSystem')} value={draft.labels.missionSystem} onChange={v => updateDraft('labels.missionSystem', v)} placeholder={t('brandAdmin.missionPlaceholder')} />
+              <AdminTextInput label={t('brandAdmin.pointsLabel')} value={draft.labels.pointsLabel} onChange={v => updateDraft('labels.pointsLabel', v)} />
+              <AdminTextInput label={t('brandAdmin.routineLabel')} value={draft.labels.routineLabel} onChange={v => updateDraft('labels.routineLabel', v)} />
+              <AdminTextInput label={t('brandAdmin.storagePrefix')} value={draft.storagePrefix} onChange={v => updateDraft('storagePrefix', v)} placeholder={t('brandAdmin.storagePlaceholder')} />
+              <AdminTextInput label={t('brandAdmin.defaultEmpCode')} value={draft.defaultEmpCode} onChange={v => updateDraft('defaultEmpCode', v)} />
             </div>
 
             {/* Section: Login */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Pantalla Login</p>
-              <AdminTextInput label="Título Login" value={draft.labels.loginTitle} onChange={v => updateDraft('labels.loginTitle', v)} />
-              <AdminTextInput label="Placeholder Input" value={draft.labels.loginPlaceholder} onChange={v => updateDraft('labels.loginPlaceholder', v)} />
-              <AdminTextInput label="Texto Botón" value={draft.labels.loginButton} onChange={v => updateDraft('labels.loginButton', v)} />
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.loginScreen')}</p>
+              <AdminTextInput label={t('brandAdmin.loginTitle')} value={draft.labels.loginTitle} onChange={v => updateDraft('labels.loginTitle', v)} />
+              <AdminTextInput label={t('brandAdmin.loginPlaceholder')} value={draft.labels.loginPlaceholder} onChange={v => updateDraft('labels.loginPlaceholder', v)} />
+              <AdminTextInput label={t('brandAdmin.loginButton')} value={draft.labels.loginButton} onChange={v => updateDraft('labels.loginButton', v)} />
             </div>
 
             {/* Section: Colores */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Colores</p>
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.colorsSection')}</p>
               <div className="grid grid-cols-2 gap-2">
-                <AdminColorInput label="Primario" value={draft.colors.primary} onChange={v => updateDraft('colors.primary', v)} />
-                <AdminColorInput label="Primario Light" value={draft.colors.primaryLight} onChange={v => updateDraft('colors.primaryLight', v)} />
-                <AdminColorInput label="Primario Dark" value={draft.colors.primaryDark} onChange={v => updateDraft('colors.primaryDark', v)} />
-                <AdminColorInput label="Acento" value={draft.colors.accent} onChange={v => updateDraft('colors.accent', v)} />
-                <AdminColorInput label="Acento Light" value={draft.colors.accentLight} onChange={v => updateDraft('colors.accentLight', v)} />
-                <AdminColorInput label="Success" value={draft.colors.success} onChange={v => updateDraft('colors.success', v)} />
+                <AdminColorInput label={t('brandAdmin.primary')} value={draft.colors.primary} onChange={v => updateDraft('colors.primary', v)} />
+                <AdminColorInput label={t('brandAdmin.primaryLight')} value={draft.colors.primaryLight} onChange={v => updateDraft('colors.primaryLight', v)} />
+                <AdminColorInput label={t('brandAdmin.primaryDark')} value={draft.colors.primaryDark} onChange={v => updateDraft('colors.primaryDark', v)} />
+                <AdminColorInput label={t('brandAdmin.accent')} value={draft.colors.accent} onChange={v => updateDraft('colors.accent', v)} />
+                <AdminColorInput label={t('brandAdmin.accentLight')} value={draft.colors.accentLight} onChange={v => updateDraft('colors.accentLight', v)} />
+                <AdminColorInput label={t('brandAdmin.success')} value={draft.colors.success} onChange={v => updateDraft('colors.success', v)} />
               </div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">Colores por Categoría</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{t('brandAdmin.categoryColors')}</p>
               <div className="grid grid-cols-2 gap-2">
-                <AdminColorInput label="Ventas" value={draft.colors.categoryColors.sales} onChange={v => updateDraft('colors.categoryColors.sales', v)} />
-                <AdminColorInput label="Ejecución" value={draft.colors.categoryColors.execution} onChange={v => updateDraft('colors.categoryColors.execution', v)} />
-                <AdminColorInput label="Comunicación" value={draft.colors.categoryColors.communication} onChange={v => updateDraft('colors.categoryColors.communication', v)} />
-                <AdminColorInput label="Activación" value={draft.colors.categoryColors.activation} onChange={v => updateDraft('colors.categoryColors.activation', v)} />
+                <AdminColorInput label={t('brandAdmin.catSales')} value={draft.colors.categoryColors.sales} onChange={v => updateDraft('colors.categoryColors.sales', v)} />
+                <AdminColorInput label={t('brandAdmin.catExecution')} value={draft.colors.categoryColors.execution} onChange={v => updateDraft('colors.categoryColors.execution', v)} />
+                <AdminColorInput label={t('brandAdmin.catCommunication')} value={draft.colors.categoryColors.communication} onChange={v => updateDraft('colors.categoryColors.communication', v)} />
+                <AdminColorInput label={t('brandAdmin.catActivation')} value={draft.colors.categoryColors.activation} onChange={v => updateDraft('colors.categoryColors.activation', v)} />
               </div>
             </div>
 
             {/* Section: Imágenes */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Imágenes</p>
-              <AdminTextInput label="URL del Logo" value={draft.images.logo || ''} onChange={v => updateDraft('images.logo', v)} placeholder="https://..." />
-              <AdminTextInput label="URL Banner Login" value={draft.images.loginBanner || ''} onChange={v => updateDraft('images.loginBanner', v)} placeholder="https://..." />
-              <AdminTextInput label="URL Producto Fallback" value={draft.images.fallbackProduct} onChange={v => updateDraft('images.fallbackProduct', v)} />
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.imagesSection')}</p>
+              <AdminTextInput label={t('brandAdmin.logoUrl')} value={draft.images.logo || ''} onChange={v => updateDraft('images.logo', v)} placeholder="https://..." />
+              <AdminTextInput label={t('brandAdmin.loginBannerUrl')} value={draft.images.loginBanner || ''} onChange={v => updateDraft('images.loginBanner', v)} placeholder="https://..." />
+              <AdminTextInput label={t('brandAdmin.fallbackProductUrl')} value={draft.images.fallbackProduct} onChange={v => updateDraft('images.fallbackProduct', v)} />
               <div className="grid grid-cols-2 gap-2">
-                <AdminColorInput label="Avatar BG (hex sin #)" value={draft.images.avatarBg} onChange={v => updateDraft('images.avatarBg', v)} />
-                <AdminColorInput label="Avatar Color (hex sin #)" value={draft.images.avatarColor} onChange={v => updateDraft('images.avatarColor', v)} />
+                <AdminColorInput label={t('brandAdmin.avatarBg')} value={draft.images.avatarBg} onChange={v => updateDraft('images.avatarBg', v)} />
+                <AdminColorInput label={t('brandAdmin.avatarColor')} value={draft.images.avatarColor} onChange={v => updateDraft('images.avatarColor', v)} />
               </div>
             </div>
 
@@ -1012,7 +1016,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => {
                   const id = isNew ? adminSlug : draft.id;
-                  if (!id || id.length < 2) { alert('El slug debe tener al menos 2 caracteres'); return; }
+                  if (!id || id.length < 2) { alert(t('brandAdmin.slugError')); return; }
                   saveBrand(id, { ...draft, id });
                   setEditingBrand(null);
                   setAdminSlug('');
@@ -1021,7 +1025,7 @@ const App: React.FC = () => {
                 className="w-full text-white font-black py-3 rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all"
                 style={{ backgroundColor: draft.colors.primary }}
               >
-                {isNew ? 'Crear Marca' : 'Guardar Cambios'}
+                {isNew ? t('brandAdmin.createBrand') : t('brandAdmin.saveChanges')}
               </button>
 
               <button
@@ -1035,13 +1039,13 @@ const App: React.FC = () => {
                 }}
                 className="w-full py-3 border-2 border-slate-200 rounded-[24px] text-slate-600 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
               >
-                Exportar brands.json
+                {t('brandAdmin.exportJson')}
               </button>
 
               {!isNew && (
                 <button
                   onClick={() => {
-                    if (confirm(`¿Eliminar "${draft.labels.appName}"?`)) {
+                    if (confirm(t('brandAdmin.deleteConfirm', { name: draft.labels.appName }))) {
                       deleteBrand(draft.id);
                       setEditingBrand(null);
                       setScreen(AppScreen.BRAND_SELECT);
@@ -1049,7 +1053,7 @@ const App: React.FC = () => {
                   }}
                   className="w-full py-3 border-2 border-red-200 rounded-[24px] text-red-500 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
                 >
-                  Eliminar Marca
+                  {t('brandAdmin.deleteBrand')}
                 </button>
               )}
             </div>
@@ -1057,7 +1061,7 @@ const App: React.FC = () => {
             {/* Brand List (for editing existing) */}
             {isNew && (
               <div className="pt-4 border-t border-slate-100">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Editar marca existente</p>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-2">{t('brandAdmin.editExisting')}</p>
                 <div className="space-y-2">
                   {brandKeys.map(key => (
                     <button
@@ -1112,7 +1116,7 @@ const App: React.FC = () => {
                  />
               </div>
               <button disabled={isLoading} className="w-full text-white font-bold py-3.5 rounded-[24px] shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: brand.colors.primary }}>
-                 {isLoading ? 'Ingresando...' : brand.labels.loginButton}
+                 {isLoading ? t('login.loggingIn') : brand.labels.loginButton}
               </button>
             </form>
             {/* PWA Install button */}
@@ -1123,11 +1127,11 @@ const App: React.FC = () => {
                 style={{ borderColor: `${brand.colors.primary}40`, color: brand.colors.primary, backgroundColor: `${brand.colors.primary}08` }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Instalar App
+                {t('login.installApp')}
               </button>
             )}
             <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="mt-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors self-center">
-              ← Cambiar marca
+              {t('login.changeBrand')}
             </button>
           </div>
         </div>
@@ -1142,7 +1146,7 @@ const App: React.FC = () => {
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.colors.primary }} />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">{brand.labels.routineLabel}</p>
               </div>
-              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight font-display leading-tight">Mi Ruta</h2>
+              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight font-display leading-tight">{t('dashboard.myRoute')}</h2>
            </div>
 
            {/* Route cards */}
@@ -1152,8 +1156,8 @@ const App: React.FC = () => {
                  <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
                    <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
                  </div>
-                 <p className="text-sm font-bold text-slate-500 mb-1">Sin rutas asignadas</p>
-                 <p className="text-[12px] text-slate-400">No hay visitas programadas para hoy.</p>
+                 <p className="text-sm font-bold text-slate-500 mb-1">{t('dashboard.noRoutes')}</p>
+                 <p className="text-[12px] text-slate-400">{t('dashboard.noRoutesDesc')}</p>
                </div>
              )}
              {routes.map(r => (
@@ -1202,10 +1206,10 @@ const App: React.FC = () => {
 
               <div className="flex justify-between items-start mb-4 relative z-10">
                 <span className="bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border border-white/10">
-                  Active POS
+                  {t('customer.activePOS')}
                 </span>
                 <span className="border border-white/30 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest bg-white/5">
-                  {selectedRoute.customer.segment || 'Segmento General'}
+                  {selectedRoute.customer.segment || t('customer.defaultSegment')}
                 </span>
               </div>
 
@@ -1214,13 +1218,13 @@ const App: React.FC = () => {
                   {selectedRoute.customer.name}
                 </h2>
                 <p className="text-sm font-bold text-white/90">
-                  {selectedRoute.customer.contact_person || 'Contacto no registrado'}
+                  {selectedRoute.customer.contact_person || t('customer.noContact')}
                 </p>
               </div>
 
               <div className="flex gap-3 relative z-10">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80">Last Visit</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80">{t('customer.lastVisit')}</p>
                   <div className="border border-white/30 rounded-xl px-3 py-1.5 bg-white/10 backdrop-blur-sm">
                     <span className="text-xs font-bold tracking-wider">
                        {selectedRoute.customer.last_visit || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
@@ -1228,7 +1232,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80">POS ID</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80">{t('customer.posId')}</p>
                   <div className="border border-white/30 rounded-xl px-3 py-1.5 bg-white/10 backdrop-blur-sm">
                     <span className="text-xs font-bold tracking-wider">
                        {selectedRoute.customer.pos_id || 'N/A'}
@@ -1239,7 +1243,7 @@ const App: React.FC = () => {
            </div>
 
            <div className="space-y-3">
-             <h3 className="text-sm font-bold text-slate-800 px-1 tracking-tight font-display">Tu progreso</h3>
+             <h3 className="text-sm font-bold text-slate-800 px-1 tracking-tight font-display">{t('customer.yourProgress')}</h3>
              <div className="grid grid-cols-3 gap-2">
                {stats.map(s => <ProgressCircle key={s.label} {...s} />)}
              </div>
@@ -1259,8 +1263,8 @@ const App: React.FC = () => {
 
            <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                 <h3 className="text-[11px] font-bold uppercase text-slate-400 tracking-[0.2em] truncate">Misiones guiadas</h3>
-                 <span className="text-[11px] font-bold uppercase whitespace-nowrap" style={{ color: brand.colors.primary }}>{missions.filter(m => m.status === 'pending').length} Restantes</span>
+                 <h3 className="text-[11px] font-bold uppercase text-slate-400 tracking-[0.2em] truncate">{t('customer.guidedMissions')}</h3>
+                 <span className="text-[11px] font-bold uppercase whitespace-nowrap" style={{ color: brand.colors.primary }}>{missions.filter(m => m.status === 'pending').length} {t('customer.remaining')}</span>
               </div>
 
               <div className="space-y-3">
@@ -1269,8 +1273,8 @@ const App: React.FC = () => {
                     <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                       <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                     </div>
-                    <p className="text-sm font-bold text-slate-500 mb-1">Sin misiones</p>
-                    <p className="text-[11px] font-bold text-slate-400">{activeFilter === 'ALL' ? 'No hay misiones asignadas.' : 'No hay misiones en esta categoría.'}</p>
+                    <p className="text-sm font-bold text-slate-500 mb-1">{t('customer.noMissions')}</p>
+                    <p className="text-[11px] font-bold text-slate-400">{activeFilter === 'ALL' ? t('customer.noMissionsAssigned') : t('customer.noMissionsCategory')}</p>
                   </div>
                 )}
                 {filteredMissions.map(m => (
@@ -1367,7 +1371,7 @@ const App: React.FC = () => {
                     <div className="flex flex-col min-h-full">
                         <div className="bg-white p-6 pb-8 rounded-b-[32px] shadow-sm mb-4">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest">{getCategoryLabel(selectedMission.category)} MISSION</span>
+                                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-widest">{getCategoryLabel(selectedMission.category)} {t('mission.missionSuffix')}</span>
                                 <div className="w-6 h-6 text-slate-400">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
@@ -1389,7 +1393,7 @@ const App: React.FC = () => {
                         <div className="px-4 mb-6">
                             <div className="bg-white p-5 rounded-[24px] shadow-sm border border-slate-100 relative overflow-hidden flex flex-col justify-center">
                                 <div className="absolute left-0 top-6 bottom-6 w-1.5 rounded-r-full" style={{ backgroundColor: brand.colors.primary }}></div>
-                                <p className="text-[11px] font-bold uppercase tracking-widest mb-2 pl-3" style={{ color: brand.colors.primary }}>INSTRUCTION</p>
+                                <p className="text-[11px] font-bold uppercase tracking-widest mb-2 pl-3" style={{ color: brand.colors.primary }}>{t('mission.instruction')}</p>
                                 <p className="text-sm font-bold text-slate-700 italic pl-3 leading-relaxed">
                                     "{selectedMission.instruction_text}"
                                 </p>
@@ -1398,8 +1402,8 @@ const App: React.FC = () => {
 
                         <div className="px-4 flex-1 flex flex-col">
                             <div className="flex gap-2 mb-3 px-1">
-                                <span className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-sm">Near By</span>
-                                <span className="px-3 py-1 bg-slate-200 text-slate-500 rounded-full text-[11px] font-bold uppercase tracking-widest">Map</span>
+                                <span className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-sm">{t('mission.nearBy')}</span>
+                                <span className="px-3 py-1 bg-slate-200 text-slate-500 rounded-full text-[11px] font-bold uppercase tracking-widest">{t('mission.map')}</span>
                             </div>
 
                             <div className="relative flex-1 min-h-[280px] bg-slate-200 rounded-[32px] overflow-hidden border-4 border-white shadow-md">
@@ -1410,7 +1414,7 @@ const App: React.FC = () => {
                                      </div>
                                      <div className="flex-1">
                                          <p className="text-[11px] font-bold text-slate-600 leading-tight">
-                                            Este producto tiene <span className="font-black" style={{ color: brand.colors.primary }}>alta demanda</span> en esta zona.
+                                            {t('mission.highDemand')}
                                          </p>
                                      </div>
                                      <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
@@ -1429,7 +1433,7 @@ const App: React.FC = () => {
                             {getCategoryLabel(selectedMission.category)}
                           </span>
                           <h2 className="text-lg font-extrabold text-slate-900 leading-tight mb-1 tracking-tight font-display">{selectedMission.name}</h2>
-                          <p className="text-xs text-slate-400">Mostrar lista de SKUs sugeridos.</p>
+                          <p className="text-xs text-slate-400">{t('mission.showSKUs')}</p>
                       </div>
 
                       <div className="flex-1 px-4 space-y-2.5 pb-6">
@@ -1441,12 +1445,12 @@ const App: React.FC = () => {
                                  <div className="flex-1 min-w-0">
                                      <h4 className="text-sm font-bold text-slate-900 mb-0.5 leading-tight">{product.name}</h4>
                                      <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: brand.colors.categoryColors[selectedMission.category] || brand.colors.accent }}>
-                                         SUGERENCIA: {product.suggested_qty} UDS
+                                         {t('mission.suggestion', { qty: product.suggested_qty })}
                                      </p>
                                  </div>
                              </div>
                          )) : (
-                            <div className="p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">No hay productos sugeridos.</div>
+                            <div className="p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">{t('mission.noProducts')}</div>
                          )}
                       </div>
                     </div>
@@ -1457,7 +1461,7 @@ const App: React.FC = () => {
                    return (
                     <div className="space-y-4 animate-fade-in w-full p-4">
                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap" style={getCategoryChipStyle('communication')}>COMUNICACIÓN</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap" style={getCategoryChipStyle('communication')}>{t('mission.communication')}</span>
                        </div>
 
                        <div className="space-y-3 w-full">
@@ -1493,7 +1497,7 @@ const App: React.FC = () => {
                        )}
 
                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 text-center space-y-3" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                          <p className="text-[11px] font-bold uppercase text-slate-500 tracking-widest leading-relaxed break-words">¿Cómo calificarías la experiencia?</p>
+                          <p className="text-[11px] font-bold uppercase text-slate-500 tracking-widest leading-relaxed break-words">{t('mission.rateExperience')}</p>
                           <div className="flex justify-center gap-2 flex-wrap">
                              {[1,2,3,4,5].map(star => (
                                 <button key={star} onClick={() => setStarRating(star)} className="w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all duration-200 active:scale-110" style={{ color: star <= starRating ? brand.colors.primary : '#cbd5e1', backgroundColor: star <= starRating ? `${brand.colors.primary}12` : '#f8fafc' }}>★</button>
@@ -1509,13 +1513,13 @@ const App: React.FC = () => {
                      <div className="space-y-4 animate-fade-in w-full p-4">
                         <div className="text-center px-2 space-y-0.5">
                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] mb-0.5 inline-block truncate w-full" style={{ color: selectedMission.category === 'activation' ? brand.colors.categoryColors.activation : brand.colors.primary }}>
-                              {selectedMission.category === 'activation' ? 'Activación' : `Ejecución ${brand.labels.missionSystem}`}
+                              {selectedMission.category === 'activation' ? t('mission.activation') : `${t('mission.executionPrefix')} ${brand.labels.missionSystem}`}
                            </span>
                            <h2 className="text-xl font-black italic tracking-tighter leading-tight break-words">{selectedMission.name}</h2>
                            {selectedMission.verificationConfig && (
                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                               Verificación IA
+                               {t('mission.aiVerification')}
                              </span>
                            )}
                         </div>
@@ -1529,7 +1533,7 @@ const App: React.FC = () => {
                                  <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg text-slate-200 shrink-0">
                                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                  </div>
-                                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] break-words">Ejecutar y capturar</span>
+                                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] break-words">{t('mission.executeCapture')}</span>
                                </div>
                              )}
                              <input type="file" ref={cameraInputRef} capture="environment" accept="image/*" className="hidden" onChange={(e) => {
@@ -1547,8 +1551,8 @@ const App: React.FC = () => {
                              {isVerifying && (
                                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10 rounded-[28px]">
                                  <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
-                                 <span className="text-sm font-black text-violet-700 uppercase tracking-widest">Analizando...</span>
-                                 <span className="text-[10px] font-bold text-slate-400">Verificación con IA en proceso</span>
+                                 <span className="text-sm font-black text-violet-700 uppercase tracking-widest">{t('mission.analyzing')}</span>
+                                 <span className="text-[10px] font-bold text-slate-400">{t('mission.aiVerifying')}</span>
                                </div>
                              )}
 
@@ -1561,7 +1565,7 @@ const App: React.FC = () => {
                                    ) : (
                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                    )}
-                                   {verificationResult.passed ? 'Aprobado' : 'No aprobado'}
+                                   {verificationResult.passed ? t('mission.approved') : t('mission.notApproved')}
                                  </div>
                                </div>
                              )}
@@ -1574,10 +1578,10 @@ const App: React.FC = () => {
                             <div className={`p-4 rounded-2xl border ${verificationResult.passed ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                               <div className="flex items-center justify-between mb-2">
                                 <span className={`text-xs font-black uppercase tracking-widest ${verificationResult.passed ? 'text-emerald-700' : 'text-red-700'}`}>
-                                  {verificationResult.passed ? 'Verificación exitosa' : 'Verificación fallida'}
+                                  {verificationResult.passed ? t('mission.verifySuccess') : t('mission.verifyFailed')}
                                 </span>
                                 <span className="text-[10px] font-bold text-slate-400">
-                                  {Math.round(verificationResult.overallConfidence * 100)}% confianza
+                                  {Math.round(verificationResult.overallConfidence * 100)}% {t('mission.confidence')}
                                 </span>
                               </div>
                               <div className="space-y-1.5">
@@ -1605,13 +1609,13 @@ const App: React.FC = () => {
                                   className="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border-2 transition-all active:scale-95"
                                   style={{ borderColor: brand.colors.primary, color: brand.colors.primary }}
                                 >
-                                  Reintentar foto
+                                  {t('mission.retryPhoto')}
                                 </button>
                                 <button
                                   onClick={forceCompleteMission}
                                   className="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-slate-100 text-slate-500 border border-slate-200 transition-all active:scale-95"
                                 >
-                                  Completar igual
+                                  {t('mission.completeAnyway')}
                                 </button>
                               </div>
                             )}
@@ -1621,20 +1625,20 @@ const App: React.FC = () => {
                         {/* ── Verification: Error state ── */}
                         {verificationError && !isVerifying && (
                           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 animate-fade-in">
-                            <p className="text-xs font-bold text-amber-700">Error al verificar la foto</p>
+                            <p className="text-xs font-bold text-amber-700">{t('mission.verifyError')}</p>
                             <p className="text-[10px] text-amber-600 break-words">{verificationError}</p>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => { setVerificationError(null); completeMission(); }}
                                 className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-amber-300 text-amber-700 active:scale-95"
                               >
-                                Reintentar
+                                {t('mission.retry')}
                               </button>
                               <button
                                 onClick={() => { setVerificationError(null); finalizeMission({ verification_error: verificationError }); }}
                                 className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-slate-100 text-slate-500 border border-slate-200 active:scale-95"
                               >
-                                Completar sin verificar
+                                {t('mission.completeNoVerify')}
                               </button>
                             </div>
                           </div>
@@ -1652,7 +1656,7 @@ const App: React.FC = () => {
                     <div className="space-y-4 animate-fade-in w-full p-4">
                        <div className="text-center px-2 space-y-0.5">
                           <span className="text-[11px] font-bold uppercase tracking-[0.2em] mb-0.5 inline-block truncate w-full" style={{ color: brand.colors.primary }}>
-                             {selectedMission.code === 'COMP_CHECK' ? 'Inteligencia de Mercado' : 'Prospección de Ventas'}
+                             {selectedMission.code === 'COMP_CHECK' ? t('mission.marketIntel') : t('mission.salesProspect')}
                           </span>
                           <h2 className="text-xl font-black italic tracking-tighter leading-tight break-words">{selectedMission.name}</h2>
                        </div>
@@ -1660,7 +1664,7 @@ const App: React.FC = () => {
                        <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 flex items-center gap-4 shadow-inner flex-wrap justify-between relative mt-2">
                           {selectedMission.code === 'COLD_DOORS' && (
                               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-white text-[11px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm border-2 border-white whitespace-nowrap" style={{ backgroundColor: brand.colors.accent }}>
-                                  Sugerido: 2
+                                  {t('mission.suggested')}
                               </div>
                           )}
 
@@ -1674,10 +1678,10 @@ const App: React.FC = () => {
                           />
                           <div className="text-right shrink-0">
                             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block truncate">
-                               {selectedMission.code === 'COMP_CHECK' ? 'Precio' : 'Negociadas'}
+                               {selectedMission.code === 'COMP_CHECK' ? t('mission.price') : t('mission.negotiated')}
                             </span>
                             <span className="text-lg font-black text-slate-900 italic truncate">
-                               {selectedMission.code === 'COMP_CHECK' ? 'Pesos' : 'Unidades'}
+                               {selectedMission.code === 'COMP_CHECK' ? t('mission.pesos') : t('mission.units')}
                             </span>
                           </div>
                        </div>
@@ -1694,7 +1698,7 @@ const App: React.FC = () => {
                         <p className="text-sm font-bold text-slate-500 italic">{selectedMission.description}</p>
 
                         <div className="bg-amber-50 text-amber-600 border border-amber-100 px-4 py-3 rounded-xl text-xs font-bold w-full mt-4">
-                           Esta tarea de tipo <span className="uppercase">{selectedMission.type}</span> no requiere información adicional.
+                           {t('mission.unknownType', { type: selectedMission.type })}
                         </div>
                      </div>
                 );
@@ -1708,7 +1712,7 @@ const App: React.FC = () => {
                 className={`w-full py-3.5 text-white text-[11px] font-bold uppercase tracking-[0.15em] rounded-xl transition-all duration-200 break-words leading-none ${isValidating || isVerifying || !isMissionReady ? 'bg-slate-300 cursor-not-allowed' : 'active:scale-[0.97]'}`}
                 style={!isValidating && !isVerifying && isMissionReady ? { backgroundColor: brand.colors.primary, boxShadow: `0 4px 14px ${brand.colors.primary}40` } : {}}
               >
-                 {isValidating ? 'Validando...' : isVerifying ? 'Analizando foto...' : (selectedMission?.type === 'take_photo' && selectedMission?.verificationConfig && tempPhoto && !verificationResult) ? 'Verificar y completar' : 'Completar misión'}
+                 {isValidating ? t('mission.validating') : isVerifying ? t('mission.analyzingPhoto') : (selectedMission?.type === 'take_photo' && selectedMission?.verificationConfig && tempPhoto && !verificationResult) ? t('mission.verifyComplete') : t('mission.completeMission')}
               </button>
            </div>
         </div>
@@ -1737,7 +1741,7 @@ const App: React.FC = () => {
                  </p>
               </div>
               <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-100 text-center shadow-sm">
-                 <p className="text-[11px] font-bold uppercase text-slate-400 mb-1 truncate">Racha</p>
+                 <p className="text-[11px] font-bold uppercase text-slate-400 mb-1 truncate">{t('profile.streak')}</p>
                  <p className="text-xl font-black italic truncate">
                     {user.emp_code === "9876543" ? "3 Días" : "12 Días"}
                  </p>
@@ -1745,7 +1749,7 @@ const App: React.FC = () => {
            </div>
 
            <button onClick={() => { window.history.pushState({}, '', '/config'); setScreen(AppScreen.BRAND_SELECT); }} className="w-full mt-auto py-3 bg-white border-2 text-[10px] font-bold uppercase tracking-widest rounded-[24px] shadow-sm active:bg-slate-50 transition-all" style={{ borderColor: `${brand.colors.primary}30`, color: brand.colors.primary }}>
-             Cerrar Sesión
+             {t('profile.logout')}
            </button>
         </div>
       )}
@@ -1753,4 +1757,12 @@ const App: React.FC = () => {
     </Layout>
   );
 };
-export default App;
+const AppWithLanguage: React.FC = () => {
+  const [lang] = useState(getLanguageFromURL);
+  return (
+    <LanguageContext.Provider value={lang}>
+      <App />
+    </LanguageContext.Provider>
+  );
+};
+export default AppWithLanguage;
