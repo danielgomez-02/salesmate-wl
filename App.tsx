@@ -1004,6 +1004,15 @@ const App: React.FC = () => {
               <AdminTextInput label={t('brandAdmin.defaultEmpCode')} value={draft.defaultEmpCode} onChange={v => updateDraft('defaultEmpCode', v)} />
             </div>
 
+            {/* Section: Category Labels */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.categorySection')}</p>
+              <AdminTextInput label={t('brandAdmin.catSales')} value={draft.labels.categories.sales} onChange={v => updateDraft('labels.categories.sales', v)} placeholder="SALES / VENTAS" />
+              <AdminTextInput label={t('brandAdmin.catExecution')} value={draft.labels.categories.execution} onChange={v => updateDraft('labels.categories.execution', v)} placeholder="EXECUTION / EJECUCIÓN" />
+              <AdminTextInput label={t('brandAdmin.catCommunication')} value={draft.labels.categories.communication} onChange={v => updateDraft('labels.categories.communication', v)} placeholder="COMMUNICATION / COMUNICACIÓN" />
+              <AdminTextInput label={t('brandAdmin.catActivation')} value={draft.labels.categories.activation} onChange={v => updateDraft('labels.categories.activation', v)} placeholder="ACTIVATION / ACTIVACIÓN" />
+            </div>
+
             {/* Section: Login */}
             <div className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{t('brandAdmin.loginScreen')}</p>
