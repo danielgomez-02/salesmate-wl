@@ -185,6 +185,7 @@ const App: React.FC = () => {
   // Brand admin form state
   const [editingBrand, setEditingBrand] = useState<BrandConfig | null>(null);
   const [adminSlug, setAdminSlug] = useState('');
+  const [isCreatingNewBrand, setIsCreatingNewBrand] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [routes, setRoutes] = useState<RouteItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -830,6 +831,7 @@ const App: React.FC = () => {
                 onClick={() => {
                   setEditingBrand(null);
                   setAdminSlug('');
+                  setIsCreatingNewBrand(true);
                   setScreen(AppScreen.BRAND_ADMIN);
                 }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors active:scale-90"
@@ -878,6 +880,7 @@ const App: React.FC = () => {
                         e.stopPropagation();
                         setEditingBrand(JSON.parse(JSON.stringify(b)));
                         setAdminSlug('');
+                        setIsCreatingNewBrand(false);
                         setScreen(AppScreen.BRAND_ADMIN);
                       }}
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors active:scale-90"
@@ -921,7 +924,7 @@ const App: React.FC = () => {
 
       {/* ──────── BRAND ADMIN SCREEN ──────── */}
       {screen === AppScreen.BRAND_ADMIN && (() => {
-        const isNew = editingBrand === null;
+        const isNew = isCreatingNewBrand;
         const draft: BrandConfig = editingBrand || createBlankBrand(adminSlug || 'nueva-marca');
 
         const updateDraft = (path: string, value: string) => {
@@ -1029,13 +1032,14 @@ const App: React.FC = () => {
                   const id = isNew ? adminSlug : draft.id;
                   if (!id || id.length < 2) { alert(t('brandAdmin.slugError')); return; }
                   const finalDraft = { ...draft, id };
-                  // If storagePrefix still uses placeholder, update to real slug
-                  if (isNew && finalDraft.storagePrefix === 'nueva-marca_sm_v1_') {
+                  // If storagePrefix still uses placeholder or doesn't match slug, update it
+                  if (isNew && (finalDraft.storagePrefix === 'nueva-marca_sm_v1_' || !finalDraft.storagePrefix.startsWith(id))) {
                     finalDraft.storagePrefix = `${id}_sm_v1_`;
                   }
                   saveBrand(id, finalDraft);
                   setEditingBrand(null);
                   setAdminSlug('');
+                  setIsCreatingNewBrand(false);
                   setBrandId(id);
                   pushBrandPath(id);
                   setScreen(AppScreen.BRAND_SELECT);
@@ -1066,6 +1070,7 @@ const App: React.FC = () => {
                     if (confirm(t('brandAdmin.deleteConfirm', { name: draft.labels.appName }))) {
                       deleteBrand(draft.id);
                       setEditingBrand(null);
+                      setIsCreatingNewBrand(false);
                       setScreen(AppScreen.BRAND_SELECT);
                     }
                   }}
@@ -1084,7 +1089,7 @@ const App: React.FC = () => {
                   {brandKeys.map(key => (
                     <button
                       key={key}
-                      onClick={() => { setEditingBrand(JSON.parse(JSON.stringify(brands[key]))); setAdminSlug(''); }}
+                      onClick={() => { setEditingBrand(JSON.parse(JSON.stringify(brands[key]))); setAdminSlug(''); setIsCreatingNewBrand(false); }}
                       className="w-full p-3 rounded-xl border border-slate-100 flex items-center gap-3 hover:bg-slate-50 transition-colors active:scale-95"
                     >
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm shrink-0" style={{ backgroundColor: brands[key].colors.primary }}>
