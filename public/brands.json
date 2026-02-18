@@ -94,9 +94,9 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂÃÂN",
-        "communication": "COMUNICACIÃÂÃÂN",
-        "activation": "ACTIVACIÃÂÃÂN"
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
