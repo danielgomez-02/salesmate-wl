@@ -10,12 +10,12 @@
       "routineLabel": "Rutina RED",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂN",
-        "communication": "COMUNICACIÃÂN",
-        "activation": "ACTIVACIÃÂN"
+        "execution": "EJECUCIÃÂÃÂN",
+        "communication": "COMUNICACIÃÂÃÂN",
+        "activation": "ACTIVACIÃÂÃÂN"
       },
       "loginTitle": "Salesmate Pro",
-      "loginPlaceholder": "CÃÂ³digo de Empleado",
+      "loginPlaceholder": "CÃÂÃÂ³digo de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
@@ -52,9 +52,9 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃÂN",
-        "communication": "COMUNICACIÃÂN",
-        "activation": "ACTIVACIÃÂN"
+        "execution": "EJECUCIÃÂÃÂN",
+        "communication": "COMUNICACIÃÂÃÂN",
+        "activation": "ACTIVACIÃÂÃÂN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
@@ -89,17 +89,17 @@
       "appName": "Pepsico",
       "appTagline": "Salesmate Platform",
       "companyName": "Pepsico",
-      "missionSystem": "Points",
+      "missionSystem": "Ruta",
       "pointsLabel": "",
-      "routineLabel": "Ruta",
+      "routineLabel": "",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÓN",
-        "communication": "COMUNICACIÓN",
-        "activation": "ACTIVACIÓN"
+        "execution": "EJECUCIÃN",
+        "communication": "COMUNICACIÃN",
+        "activation": "ACTIVACIÃN"
       },
       "loginTitle": "Salesmate",
-      "loginPlaceholder": "Código de Empleado",
+      "loginPlaceholder": "CÃ³digo de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
