@@ -4,6 +4,7 @@ import { defaultBrands, DEFAULT_BRAND } from '../config/defaultBrands';
 
 const STORAGE_KEY_BRAND = 'salesmate_brand';
 const STORAGE_KEY_CUSTOM = 'salesmate_brands_custom';
+const API_URL = '/api/brands';
 
 /* ─── helpers ─── */
 
@@ -70,6 +71,38 @@ export function createBlankBrand(id: string): BrandConfig {
   };
 }
 
+/* ─── API helpers ─── */
+
+async function apiFetchBrands(): Promise<Record<string, BrandConfig> | null> {
+  try {
+    const res = await fetch(API_URL, { cache: 'no-cache' });
+    if (res.ok) return res.json();
+  } catch { /* network error, fall through */ }
+  return null;
+}
+
+async function apiSaveBrand(id: string, brand: BrandConfig): Promise<boolean> {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, brand }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+async function apiDeleteBrand(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
 /* ─── Context type ─── */
 
 interface BrandContextValue {
@@ -107,7 +140,7 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (segment && segment !== 'config' && merged[segment]) return segment;
 
     // If URL has a brand segment that does NOT exist yet, still keep it as brandId
-    // so we can resolve it after brands.json loads
+    // so we can resolve it after brands load from API
     if (segment && segment !== 'config' && segment !== '') return segment;
 
     const params = new URLSearchParams(window.location.search);
@@ -120,10 +153,24 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return DEFAULT_BRAND;
   });
 
-  // Fetch brands.json on mount
+  // Fetch brands from API on mount (falls back to static brands.json)
   useEffect(() => {
     (async () => {
       try {
+        // Try API first (always fresh from GitHub)
+        const apiBrands = await apiFetchBrands();
+        if (apiBrands && Object.keys(apiBrands).length > 0) {
+          setAllBrands(apiBrands);
+          // Sync localStorage cache
+          const custom: Record<string, BrandConfig> = {};
+          for (const [k, v] of Object.entries(apiBrands)) {
+            if (!defaultBrands[k]) custom[k] = v;
+          }
+          saveCustomBrands(custom);
+          return;
+        }
+
+        // Fallback: static brands.json
         const res = await fetch('/brands.json');
         if (res.ok) {
           const json: Record<string, BrandConfig> = await res.json();
@@ -133,6 +180,13 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       finally { setLoading(false); }
     })();
   }, []);
+
+  // Set loading=false after API brands resolve
+  useEffect(() => {
+    if (Object.keys(allBrands).length > 0 && loading) {
+      setLoading(false);
+    }
+  }, [allBrands, loading]);
 
   const brandKeys = useMemo(() => Object.keys(allBrands), [allBrands]);
 
@@ -160,12 +214,21 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const saveBrand = useCallback((id: string, config: BrandConfig) => {
+    const brandData = { ...config, id };
+
+    // Update local state immediately (optimistic)
     setAllBrands(prev => {
-      const next = { ...prev, [id]: { ...config, id } };
+      const next = { ...prev, [id]: brandData };
+      // Also cache in localStorage as fallback
       const custom = loadCustomBrands();
-      custom[id] = { ...config, id };
+      custom[id] = brandData;
       saveCustomBrands(custom);
       return next;
+    });
+
+    // Persist to API (fire-and-forget, non-blocking)
+    apiSaveBrand(id, brandData).then(ok => {
+      if (!ok) console.warn(`[BrandContext] API save failed for "${id}", kept in localStorage`);
     });
   }, []);
 
@@ -179,6 +242,11 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return next;
     });
     _setBrandId(prev => prev === id ? DEFAULT_BRAND : prev);
+
+    // Persist deletion to API
+    apiDeleteBrand(id).then(ok => {
+      if (!ok) console.warn(`[BrandContext] API delete failed for "${id}"`);
+    });
   }, []);
 
   const exportBrands = useCallback(() => JSON.stringify(allBrands, null, 2), [allBrands]);
