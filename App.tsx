@@ -79,10 +79,6 @@ const AchievementOverlay: React.FC<{
         </div>
       )}
 
-      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-inner overflow-hidden border-4 border-white shrink-0">
-        <img src={`https://ui-avatars.com/api/?name=Star&background=${avatarBg}&color=${avatarColor}&size=512`} className="w-full h-full object-cover opacity-90" alt="Success Avatar" />
-      </div>
-
       <p className="text-slate-500 font-bold text-sm px-4 tracking-tight italic max-w-xs">{t('achievement.goodJob')}</p>
     </div>
 
