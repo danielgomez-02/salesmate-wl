@@ -94,18 +94,18 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÓN",
-        "communication": "COMUNICACIÓN",
-        "activation": "ACTIVACIÓN"
+        "execution": "EJECUCIÃÂÃÂN",
+        "communication": "COMUNICACIÃÂÃÂN",
+        "activation": "ACTIVACIÃÂÃÂN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
       "loginButton": "Sign In"
     },
     "colors": {
-      "primary": "#6C2BD9",
+      "primary": "#0e161c",
       "primaryLight": "#EDE9FE",
-      "primaryDark": "#5B21B6",
+      "primaryDark": "#0e151c",
       "accent": "#06B6D4",
       "accentLight": "#CFFAFE",
       "success": "#10B981",
@@ -120,7 +120,8 @@
     "images": {
       "fallbackProduct": "https://ui-avatars.com/api/?name=Product&background=6C2BD9&color=fff&size=256",
       "avatarBg": "6C2BD9",
-      "avatarColor": "fff"
+      "avatarColor": "fff",
+      "logo": "https://colombiafintech.co/wp-content/uploads/2025/08/Logo_Yalo-1-1-1-scaled.png"
     },
     "storagePrefix": "yalo_sm_v1_",
     "defaultEmpCode": "1234567"
