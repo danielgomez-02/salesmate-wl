@@ -10,12 +10,12 @@
       "routineLabel": "Rutina RED",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃN",
-        "communication": "COMUNICACIÃN",
-        "activation": "ACTIVACIÃN"
+        "execution": "EJECUCIÃÂN",
+        "communication": "COMUNICACIÃÂN",
+        "activation": "ACTIVACIÃÂN"
       },
       "loginTitle": "Salesmate Pro",
-      "loginPlaceholder": "CÃ³digo de Empleado",
+      "loginPlaceholder": "CÃÂ³digo de Empleado",
       "loginButton": "Ingresar"
     },
     "colors": {
@@ -52,9 +52,9 @@
       "routineLabel": "Rutina CORE",
       "categories": {
         "sales": "VENTAS",
-        "execution": "EJECUCIÃN",
-        "communication": "COMUNICACIÃN",
-        "activation": "ACTIVACIÃN"
+        "execution": "EJECUCIÃÂN",
+        "communication": "COMUNICACIÃÂN",
+        "activation": "ACTIVACIÃÂN"
       },
       "loginTitle": "Salesmate",
       "loginPlaceholder": "Employee Code",
@@ -82,5 +82,48 @@
     },
     "storagePrefix": "yalo_sm_v1_",
     "defaultEmpCode": "1234567"
+  },
+  "pepsico": {
+    "id": "pepsico",
+    "labels": {
+      "appName": "Pepsico",
+      "appTagline": "Salesmate Platform",
+      "companyName": "Pepsico",
+      "missionSystem": "Points",
+      "pointsLabel": "",
+      "routineLabel": "Ruta",
+      "categories": {
+        "sales": "VENTAS",
+        "execution": "EJECUCIÓN",
+        "communication": "COMUNICACIÓN",
+        "activation": "ACTIVACIÓN"
+      },
+      "loginTitle": "Salesmate",
+      "loginPlaceholder": "Código de Empleado",
+      "loginButton": "Ingresar"
+    },
+    "colors": {
+      "primary": "#03355a",
+      "primaryLight": "#EEF2FF",
+      "primaryDark": "#011626",
+      "accent": "#06B6D4",
+      "accentLight": "#CFFAFE",
+      "success": "#10B981",
+      "successLight": "#D1FAE5",
+      "categoryColors": {
+        "sales": "#38bdf8",
+        "execution": "#a855f7",
+        "communication": "#2dd4bf",
+        "activation": "#f59e0b"
+      }
+    },
+    "images": {
+      "fallbackProduct": "https://ui-avatars.com/api/?name=P&background=6366F1&color=fff&size=256",
+      "avatarBg": "03355a",
+      "avatarColor": "fff",
+      "logo": "https://1000logos.net/wp-content/uploads/2025/10/PepsiCo-NEW-Logo.png"
+    },
+    "storagePrefix": "pepsico_sm_v1_",
+    "defaultEmpCode": "5543767891"
   }
 }
