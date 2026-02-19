@@ -167,6 +167,7 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (!defaultBrands[k]) custom[k] = v;
           }
           saveCustomBrands(custom);
+          setLoading(false);
           return;
         }
 
@@ -180,13 +181,6 @@ export const BrandProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       finally { setLoading(false); }
     })();
   }, []);
-
-  // Set loading=false after API brands resolve
-  useEffect(() => {
-    if (Object.keys(allBrands).length > 0 && loading) {
-      setLoading(false);
-    }
-  }, [allBrands, loading]);
 
   const brandKeys = useMemo(() => Object.keys(allBrands), [allBrands]);
 

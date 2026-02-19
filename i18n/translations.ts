@@ -14,6 +14,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'achievement.continue': 'Continuar',
 
     // Loading
+    'loading.title': 'Cargando...',
     'loading.profile': 'Cargando perfil...',
 
     // Landing
@@ -188,6 +189,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'achievement.continue': 'Continue',
 
     // Loading
+    'loading.title': 'Loading...',
     'loading.profile': 'Loading profile...',
 
     // Landing
@@ -362,6 +364,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'achievement.continue': 'Continuar',
 
     // Loading
+    'loading.title': 'Carregando...',
     'loading.profile': 'Carregando perfil...',
 
     // Landing

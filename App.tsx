@@ -172,11 +172,12 @@ const App: React.FC = () => {
   };
 
   // Route-based initial screen: /config → BRAND_SELECT, /{brandId} → LOGIN, / → LANDING
+  // If there's a path segment that might be a brand but brands are still loading, start at LOGIN
+  // (avoids flashing the LANDING screen while waiting for API)
   const [screen, setScreen] = useState<AppScreen>(() => {
     if (initialPath === 'config') return AppScreen.BRAND_SELECT;
     if (initialPath && brands[initialPath]) return AppScreen.LOGIN;
-    // If there's a path segment but brand not found yet, start at LANDING
-    // (will be re-evaluated when brands finish loading)
+    if (initialPath && initialPath !== '') return AppScreen.LOGIN; // assume brand URL, resolve after load
     return AppScreen.LANDING;
   });
 
@@ -189,8 +190,10 @@ const App: React.FC = () => {
         // Brand found after load — navigate to login
         setBrandId(initialPath);
         setScreen(AppScreen.LOGIN);
+      } else {
+        // Brand not found after full load — redirect to LANDING
+        setScreen(AppScreen.LANDING);
       }
-      // If brand still not found after load, stay on LANDING
     }
   }, [loading, brands, initialPath, hasResolvedRoute, setBrandId]);
 
@@ -745,6 +748,19 @@ const App: React.FC = () => {
     const c = colorMap[cat] || '#64748b';
     return { color: c, backgroundColor: `${c}18`, border: `1.5px solid ${c}40` };
   };
+
+  // Show branded splash while brands are loading from API (avoids LANDING flash)
+  if (loading && initialPath && initialPath !== 'config' && initialPath !== '') {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ backgroundColor: brand.colors.primary }}>
+             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+           </div>
+           <div className="w-8 h-8 border-3 border-t-transparent rounded-full animate-spin mb-3" style={{ borderColor: brand.colors.primaryLight, borderTopColor: brand.colors.primary }}></div>
+           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">{t('loading.title')}</p>
+        </div>
+    )
+  }
 
   if (isLoading && screen === AppScreen.LOGIN && !user) {
     return (
