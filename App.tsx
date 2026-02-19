@@ -168,8 +168,35 @@ const App: React.FC = () => {
   const { brand, setBrandId, brandId, brands, brandKeys, saveBrand, deleteBrand, exportBrands, initialPath, pushBrandPath, loading } = useBrand();
   const { t, lang } = useLanguage();
   const getCategoryLabel = (cat: string) => {
+    // Use i18n translation for category labels (language-aware)
+    const i18nKey = `category.${cat}` as string;
+    const translated = t(i18nKey);
+    // If i18n has a translation, use it; otherwise fall back to brand config or raw key
+    if (translated !== i18nKey) return translated;
     return brand.labels.categories[cat as MissionCategory] || cat.toUpperCase();
   };
+
+  // Translate known questionnaire strings (originally hardcoded in Spanish from API parser)
+  const translateQuestionnaire = useCallback((q: Mission['questionnaire']): Mission['questionnaire'] => {
+    if (!q) return q;
+    const qMap: Record<string, string> = {
+      '¿Se completó la actividad satisfactoriamente?': t('questionnaire.completedQuestion'),
+      '¿Resultado de la gestión?': t('questionnaire.managementQuestion'),
+      '¿Tarea completada?': t('questionnaire.taskCompleted'),
+    };
+    const oMap: Record<string, string> = {
+      'Sí': t('questionnaire.yes'),
+      'No': t('questionnaire.no'),
+      'Pendiente': t('questionnaire.pending'),
+      'Gestionado': t('questionnaire.managed'),
+      'Rechazado': t('questionnaire.rejected'),
+      'Volver a intentar': t('questionnaire.retry'),
+    };
+    return {
+      question: qMap[q.question] || q.question,
+      options: q.options.map(o => oMap[o] || o),
+    };
+  }, [t]);
 
   // Route-based initial screen: /config → BRAND_SELECT, /{brandId} → LOGIN, / → LANDING
   // If there's a path segment that might be a brand but brands are still loading, start at LOGIN
@@ -733,9 +760,9 @@ const App: React.FC = () => {
 
   const filters = [
     { key: 'ALL', label: t('customer.allFilter') },
-    { key: 'SALES', label: brand.labels.categories.sales },
-    { key: 'EXECUTION', label: brand.labels.categories.execution },
-    { key: 'COMMUNICATION', label: brand.labels.categories.communication }
+    { key: 'SALES', label: getCategoryLabel('sales') },
+    { key: 'EXECUTION', label: getCategoryLabel('execution') },
+    { key: 'COMMUNICATION', label: getCategoryLabel('communication') }
   ];
 
   const getCategoryChipStyle = (cat: MissionCategory) => {
@@ -1688,32 +1715,41 @@ const App: React.FC = () => {
                           <p className="text-xs text-slate-400 font-bold italic leading-snug break-words">{selectedMission.description}</p>
 
                           <div className="space-y-2.5 pt-2">
-                             {selectedMission.instruction_steps?.map((step, idx) => (
+                             {selectedMission.instruction_steps?.map((step, idx) => {
+                                const translatedStep = step.startsWith('Acción requerida: ') ? `${t('questionnaire.actionRequired')} ${step.slice(18)}` : step === 'Realizar verificación' ? t('questionnaire.performVerification') : step;
+                                return (
                                 <div key={idx} className="flex gap-3 items-start p-3.5 bg-white rounded-2xl border border-slate-200/80 break-words" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                                    <span className="text-[11px] font-bold text-slate-400 mt-0.5 shrink-0">{idx + 1}.</span>
-                                   <p className="text-sm font-medium text-slate-700 leading-snug">{step}</p>
+                                   <p className="text-sm font-medium text-slate-700 leading-snug">{translatedStep}</p>
                                 </div>
-                             ))}
+                                );
+                             })}
                           </div>
                        </div>
 
-                       {selectedMission.questionnaire && (
+                       {selectedMission.questionnaire && (() => {
+                         const tq = translateQuestionnaire(selectedMission.questionnaire)!;
+                         return (
                          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 space-y-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <p className="text-sm font-bold text-slate-800 tracking-tight break-words">{selectedMission.questionnaire.question}</p>
+                            <p className="text-sm font-bold text-slate-800 tracking-tight break-words">{tq.question}</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                               {selectedMission.questionnaire.options.map(opt => (
+                               {tq.options.map((opt, i) => {
+                                 const rawOpt = selectedMission.questionnaire!.options[i];
+                                 return (
                                   <button
-                                    key={opt}
-                                    onClick={() => setSurveyValue(opt)}
-                                    className={`p-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${surveyValue !== opt ? 'bg-slate-50 border-2 border-slate-200 text-slate-600 hover:border-slate-300' : 'text-white shadow-lg scale-[1.02]'}`}
-                                    style={surveyValue === opt ? { backgroundColor: brand.colors.primary, borderColor: brand.colors.primary, borderWidth: '2px' } : {}}
+                                    key={rawOpt}
+                                    onClick={() => setSurveyValue(rawOpt)}
+                                    className={`p-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${surveyValue !== rawOpt ? 'bg-slate-50 border-2 border-slate-200 text-slate-600 hover:border-slate-300' : 'text-white shadow-lg scale-[1.02]'}`}
+                                    style={surveyValue === rawOpt ? { backgroundColor: brand.colors.primary, borderColor: brand.colors.primary, borderWidth: '2px' } : {}}
                                   >
                                      <span className="font-bold text-xs uppercase tracking-wide">{opt}</span>
                                   </button>
-                               ))}
+                                 );
+                               })}
                             </div>
                          </div>
-                       )}
+                         );
+                       })()}
 
                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 text-center space-y-3" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                           <p className="text-[11px] font-bold uppercase text-slate-500 tracking-widest leading-relaxed break-words">{t('mission.rateExperience')}</p>

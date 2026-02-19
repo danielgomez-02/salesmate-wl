@@ -114,6 +114,25 @@ export const translations: Record<Lang, Record<string, string>> = {
     'customer.noMissionsCategory': 'No hay misiones en esta categoría.',
     'customer.allFilter': 'TODAS',
 
+    // Category defaults
+    'category.sales': 'VENTAS',
+    'category.execution': 'EJECUCIÓN',
+    'category.communication': 'COMUNICACIÓN',
+    'category.activation': 'ACTIVACIÓN',
+
+    // Mission questionnaire
+    'questionnaire.completedQuestion': '¿Se completó la actividad satisfactoriamente?',
+    'questionnaire.yes': 'Sí',
+    'questionnaire.no': 'No',
+    'questionnaire.pending': 'Pendiente',
+    'questionnaire.managementQuestion': '¿Resultado de la gestión?',
+    'questionnaire.managed': 'Gestionado',
+    'questionnaire.rejected': 'Rechazado',
+    'questionnaire.retry': 'Volver a intentar',
+    'questionnaire.taskCompleted': '¿Tarea completada?',
+    'questionnaire.actionRequired': 'Acción requerida:',
+    'questionnaire.performVerification': 'Realizar verificación',
+
     // Mission execution
     'mission.missionSuffix': 'MISSION',
     'mission.instruction': 'INSTRUCTION',
@@ -289,6 +308,25 @@ export const translations: Record<Lang, Record<string, string>> = {
     'customer.noMissionsCategory': 'No missions in this category.',
     'customer.allFilter': 'ALL',
 
+    // Category defaults
+    'category.sales': 'SALES',
+    'category.execution': 'EXECUTION',
+    'category.communication': 'COMMUNICATION',
+    'category.activation': 'ACTIVATION',
+
+    // Mission questionnaire
+    'questionnaire.completedQuestion': 'Was the activity completed successfully?',
+    'questionnaire.yes': 'Yes',
+    'questionnaire.no': 'No',
+    'questionnaire.pending': 'Pending',
+    'questionnaire.managementQuestion': 'Management result?',
+    'questionnaire.managed': 'Managed',
+    'questionnaire.rejected': 'Rejected',
+    'questionnaire.retry': 'Retry',
+    'questionnaire.taskCompleted': 'Task completed?',
+    'questionnaire.actionRequired': 'Action required:',
+    'questionnaire.performVerification': 'Perform verification',
+
     // Mission execution
     'mission.missionSuffix': 'MISSION',
     'mission.instruction': 'INSTRUCTION',
@@ -463,6 +501,25 @@ export const translations: Record<Lang, Record<string, string>> = {
     'customer.noMissionsAssigned': 'Não há missões atribuídas.',
     'customer.noMissionsCategory': 'Não há missões nesta categoria.',
     'customer.allFilter': 'TODAS',
+
+    // Category defaults
+    'category.sales': 'VENDAS',
+    'category.execution': 'EXECUÇÃO',
+    'category.communication': 'COMUNICAÇÃO',
+    'category.activation': 'ATIVAÇÃO',
+
+    // Mission questionnaire
+    'questionnaire.completedQuestion': 'A atividade foi concluída com sucesso?',
+    'questionnaire.yes': 'Sim',
+    'questionnaire.no': 'Não',
+    'questionnaire.pending': 'Pendente',
+    'questionnaire.managementQuestion': 'Resultado da gestão?',
+    'questionnaire.managed': 'Gerenciado',
+    'questionnaire.rejected': 'Rejeitado',
+    'questionnaire.retry': 'Tentar novamente',
+    'questionnaire.taskCompleted': 'Tarefa concluída?',
+    'questionnaire.actionRequired': 'Ação necessária:',
+    'questionnaire.performVerification': 'Realizar verificação',
 
     // Mission execution
     'mission.missionSuffix': 'MISSÃO',
