@@ -83,7 +83,8 @@ export async function verifyPhoto(
   taskId: string,
   imageInput: { url?: string; base64?: string },
   auth: AuthContext,
-  configOverride?: PhotoVerificationConfig
+  configOverride?: PhotoVerificationConfig,
+  lang: string = 'es',
 ): Promise<VerificationResult> {
   const db = getDb();
   const startTime = Date.now();
@@ -112,7 +113,7 @@ export async function verifyPhoto(
   const config = configOverride || (task.photoVerificationConfig as PhotoVerificationConfig);
 
   // 3. Run core verification logic
-  const result = await runVerification(imageInput, config, auth, startTime);
+  const result = await runVerification(imageInput, config, auth, startTime, lang);
 
   // 4. Store result linked to internal task
   const imageUrl = imageInput.url || `base64:${(imageInput.base64 || '').slice(0, 50)}...`;
@@ -169,12 +170,13 @@ export async function verifyPhotoExternal(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig,
   auth: AuthContext,
+  lang: string = 'es',
 ): Promise<VerificationResult> {
   const db = getDb();
   const startTime = Date.now();
 
   // 1. Run core verification logic
-  const result = await runVerification(imageInput, config, auth, startTime);
+  const result = await runVerification(imageInput, config, auth, startTime, lang);
 
   // 2. Store result linked to external task ID
   const imageUrl = imageInput.url || `base64:${(imageInput.base64 || '').slice(0, 50)}...`;
@@ -226,6 +228,7 @@ async function runVerification(
   config: PhotoVerificationConfig,
   auth: AuthContext,
   startTime: number,
+  lang: string = 'es',
 ): Promise<VerificationResultInternal> {
   if (!config || !config.criteria || config.criteria.length === 0) {
     throw new Error('Verification configuration has no criteria');
@@ -247,7 +250,7 @@ async function runVerification(
 
   while (retryCount <= maxRetries && !analysisWithUsage) {
     try {
-      analysisWithUsage = await analyzeImage(imageInput, config);
+      analysisWithUsage = await analyzeImage(imageInput, config, lang);
       // Accumulate tokens from successful attempt
       totalTokenUsage.inputTokens += analysisWithUsage.tokenUsage.inputTokens;
       totalTokenUsage.outputTokens += analysisWithUsage.tokenUsage.outputTokens;

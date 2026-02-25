@@ -572,7 +572,8 @@ const App: React.FC = () => {
         const result = await verifyPhoto(
           String(selectedMission.taskid),
           tempPhoto,
-          selectedMission.verificationConfig
+          selectedMission.verificationConfig,
+          lang,
         );
         setVerificationResult(result);
         setIsVerifying(false);

@@ -44,6 +44,7 @@ export const VerifyRequestSchema = z.object({
   imageUrl: z.string().url().optional(),
   imageBase64: z.string().optional(),
   config: PhotoVerificationConfigSchema.optional(), // Required for external mode, optional override for internal
+  lang: z.enum(['es', 'en', 'pt']).optional().default('es'), // Language for AI feedback translation
 }).refine(
   (data) => data.imageUrl || data.imageBase64,
   { message: 'Either imageUrl or imageBase64 must be provided' }

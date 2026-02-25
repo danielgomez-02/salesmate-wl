@@ -30,6 +30,7 @@ export async function verifyPhoto(
   externalTaskId: string,
   imageBase64: string,
   config: PhotoVerificationConfig,
+  lang: string = 'es',
 ): Promise<VerificationResult> {
   const response = await fetch(`${PHOTO_VERIFY_API}/api/verify`, {
     method: 'POST',
@@ -41,6 +42,7 @@ export async function verifyPhoto(
       externalTaskId: String(externalTaskId),
       imageBase64: cleanBase64(imageBase64),
       config,
+      lang,
     }),
   });
 

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { taskId, externalTaskId, imageUrl, imageBase64, config } = parsed.data;
+    const { taskId, externalTaskId, imageUrl, imageBase64, config, lang } = parsed.data;
 
     // 4. Determine the reference ID for storage path
     const referenceId = taskId || externalTaskId || requestId;
@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
 
     if (taskId) {
       // --- INTERNAL MODE: task lives in our DB ---
-      result = await verifyPhoto(taskId, finalImageInput, auth, config);
+      result = await verifyPhoto(taskId, finalImageInput, auth, config, lang);
     } else if (externalTaskId && config) {
       // --- EXTERNAL/HYBRID MODE: task lives in Retool/external API ---
-      result = await verifyPhotoExternal(externalTaskId, finalImageInput, config, auth);
+      result = await verifyPhotoExternal(externalTaskId, finalImageInput, config, auth, lang);
     } else {
       return NextResponse.json(
         {

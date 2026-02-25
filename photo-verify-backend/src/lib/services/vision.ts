@@ -87,9 +87,19 @@ export function estimateCostUsd(model: string, usage: TokenUsage): number {
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // 6 decimal precision
 }
 
+// ── Language instructions for translated feedback ──
+
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  es: 'IMPORTANT: All "reasoning" fields and "overall_assessment" MUST be written in Spanish (Español).',
+  en: 'IMPORTANT: All "reasoning" fields and "overall_assessment" MUST be written in English.',
+  pt: 'IMPORTANT: All "reasoning" fields and "overall_assessment" MUST be written in Portuguese (Português).',
+};
+
 // ── Shared prompt builders ──
 
-function buildSystemPrompt(config: PhotoVerificationConfig): string {
+function buildSystemPrompt(config: PhotoVerificationConfig, lang: string = 'es'): string {
+  const langInstruction = LANGUAGE_INSTRUCTIONS[lang] || LANGUAGE_INSTRUCTIONS['es'];
+
   return `You are an expert image verification system for retail/field operations.
 Your job is to analyze photos and verify specific criteria.
 
@@ -100,6 +110,8 @@ IMPORTANT RULES:
 - For "boolean" criteria: determine if the condition is true or false
 - For "count" criteria: count the specific items asked about
 - For "text" criteria: extract or identify the requested text/information
+
+${langInstruction}
 
 You MUST respond with valid JSON only. No markdown, no code blocks, just raw JSON.
 
@@ -153,6 +165,7 @@ async function analyzeWithOpenAI(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig,
   model: string,
+  lang: string = 'es',
 ): Promise<VisionAnalysisWithUsage> {
   const client = getOpenAIClient();
 
@@ -165,7 +178,7 @@ async function analyzeWithOpenAI(
     messages: [
       {
         role: 'system',
-        content: buildSystemPrompt(config),
+        content: buildSystemPrompt(config, lang),
       },
       {
         role: 'user',
@@ -202,6 +215,7 @@ async function analyzeWithGemini(
   imageInput: { url?: string; base64?: string },
   config: PhotoVerificationConfig,
   model: string,
+  lang: string = 'es',
 ): Promise<VisionAnalysisWithUsage> {
   const client = getGeminiClient();
   const genModel: GenerativeModel = client.getGenerativeModel({
@@ -214,7 +228,7 @@ async function analyzeWithGemini(
   });
 
   // Build the full prompt (Gemini combines system + user into one)
-  const fullPrompt = `${buildSystemPrompt(config)}\n\n${buildUserPrompt(config)}`;
+  const fullPrompt = `${buildSystemPrompt(config, lang)}\n\n${buildUserPrompt(config)}`;
 
   // Prepare image part
   let imagePart: { inlineData: { mimeType: string; data: string } };
@@ -298,17 +312,18 @@ function parseVisionResponse(content: string): VisionAnalysisResult {
 
 export async function analyzeImage(
   imageInput: { url?: string; base64?: string },
-  config: PhotoVerificationConfig
+  config: PhotoVerificationConfig,
+  lang: string = 'es',
 ): Promise<VisionAnalysisWithUsage> {
   const provider: AIProvider = config.provider || 'openai';
   const model = config.model || DEFAULT_MODELS[provider];
 
   switch (provider) {
     case 'gemini':
-      return analyzeWithGemini(imageInput, config, model);
+      return analyzeWithGemini(imageInput, config, model, lang);
     case 'openai':
     default:
-      return analyzeWithOpenAI(imageInput, config, model);
+      return analyzeWithOpenAI(imageInput, config, model, lang);
   }
 }
 
