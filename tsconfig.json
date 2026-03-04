@@ -26,5 +26,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["tests"]
+  "exclude": ["tests", "photo-verify-backend"]
 }
